@@ -381,58 +381,97 @@
       </section>
 
       <!-- Inventory View -->
-      <section data-view="inventory" class="hidden bg-slate-800 border border-slate-700 rounded-lg shadow p-5 space-y-5">
-        <div class="flex items-center gap-3">
-          <h2 class="font-semibold flex-1 flex items-center gap-2">Inventory <span id="inv-low-count" class="text-[11px] text-rose-300/80 hidden"></span></h2>
-          <button id="inv-refresh" class="text-[11px] px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600">Refresh</button>
+      <section data-view="inventory" class="hidden bg-slate-800/90 border border-slate-700 rounded-xl shadow p-5 space-y-5 relative">
+        <div id="inv-loading" class="hidden absolute inset-0 backdrop-blur-sm bg-slate-900/40 z-20 flex flex-col items-center justify-center gap-3 text-xs text-slate-300">
+          <div class="spinner"></div>
+          <span>Loading inventory…</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <h2 class="font-semibold flex-1 flex items-center gap-3 text-lg">Inventory <span id="inv-low-count" class="text-[11px] text-rose-300/80 hidden"></span></h2>
+          <div id="inv-metrics" class="flex flex-wrap gap-2 text-[10px]"></div>
+          <button id="inv-refresh" class="text-[11px] px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Refresh</button>
           <button id="inv-export" class="text-[11px] px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600">Export CSV</button>
         </div>
-        <div class="grid md:grid-cols-3 gap-5">
-          <div class="md:col-span-2 flex flex-col gap-3">
-            <div class="flex items-center gap-2 text-[11px]">
-              <input id="inv-search" placeholder="Search" class="px-2 py-1 rounded bg-slate-700 border border-slate-600 flex-1">
-              <label class="flex items-center gap-1 select-none"><input type="checkbox" id="inv-low-toggle" class="accent-indigo-500"> <span>Low only</span></label>
-            </div>
-            <div class="overflow-auto soft-scroll border border-slate-700 rounded-lg">
-              <table class="w-full text-[12px]" id="inv-table">
-                <thead class="bg-slate-900/50 sticky top-0">
-                  <tr class="text-left text-slate-300">
-                    <th class="px-3 py-2">ID</th>
-                    <th class="px-3 py-2">Name</th>
-                    <th class="px-3 py-2">Dosage</th>
-                    <th class="px-3 py-2">Stock</th>
-                    <th class="px-3 py-2">Reorder</th>
-                    <th class="px-3 py-2">Pend Qty</th>
-                    <th class="px-3 py-2">Daily Avg</th>
-                    <th class="px-3 py-2">Days Supply</th>
-                    <th class="px-3 py-2">Status</th>
-                    <th class="px-3 py-2 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="inv-body" class="divide-y divide-slate-700/60"></tbody>
-              </table>
-              <div id="inv-empty" class="text-center text-[11px] text-slate-500 py-4 hidden">No drugs</div>
+        <div class="flex flex-col gap-3">
+          <div class="flex flex-wrap items-center gap-2 text-[11px]">
+            <input id="inv-search" placeholder="Search by name / dosage / id" class="px-3 py-1.5 rounded bg-slate-700/70 border border-slate-600 flex-1 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
+            <label class="flex items-center gap-1 select-none px-2 py-1 rounded bg-slate-700/60 border border-slate-600 cursor-pointer">
+              <input type="checkbox" id="inv-low-toggle" class="accent-indigo-500">
+              <span>Low only</span>
+            </label>
+            <select id="inv-pagesize" class="bg-slate-700 border border-slate-600 rounded px-2 py-1">
+              <option>10</option><option selected>25</option><option>50</option><option>100</option>
+            </select>
+          </div>
+          <div class="overflow-auto soft-scroll border border-slate-700 rounded-lg relative" id="inv-table-wrap">
+            <table class="w-full text-[12px]" id="inv-table">
+              <thead class="bg-slate-900/70 backdrop-blur sticky top-0 text-slate-300 select-none">
+                <tr>
+                  <th data-sort="id" class="px-3 py-2 text-left cursor-pointer">ID</th>
+                  <th data-sort="name" class="px-3 py-2 text-left cursor-pointer">Name</th>
+                  <th data-sort="dosage" class="px-3 py-2 text-left cursor-pointer">Dosage</th>
+                  <th data-sort="stock" class="px-3 py-2 text-left cursor-pointer">Stock</th>
+                  <th data-sort="reorder_level" class="px-3 py-2 text-left cursor-pointer">Reorder</th>
+                  <th data-sort="pending_quantity" class="px-3 py-2 text-left cursor-pointer">Pend Qty</th>
+                  <th data-sort="daily_avg" class="px-3 py-2 text-left cursor-pointer">Daily Avg</th>
+                  <th data-sort="days_supply" class="px-3 py-2 text-left cursor-pointer">Days Supply</th>
+                  <th class="px-3 py-2 text-left">Status</th>
+                  <th class="px-3 py-2 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="inv-body" class="divide-y divide-slate-700/60"></tbody>
+            </table>
+            <div id="inv-empty" class="text-center text-[11px] text-slate-500 py-6 hidden">No drugs</div>
+          </div>
+          <div class="flex items-center justify-between text-[11px] text-slate-400" id="inv-pager-bar">
+            <div id="inv-page-info"></div>
+            <div class="flex items-center gap-1">
+              <button id="inv-prev" class="px-2 py-1 rounded bg-slate-700 disabled:opacity-40">Prev</button>
+              <button id="inv-next" class="px-2 py-1 rounded bg-slate-700 disabled:opacity-40">Next</button>
             </div>
           </div>
-          <div class="flex flex-col gap-3">
-            <div class="flex items-center justify-between">
-              <h3 class="text-sm font-medium">Transactions</h3>
-              <div class="flex items-center gap-2">
-                <select id="inv-trx-filter" class="text-[11px] bg-slate-700 border border-slate-600 rounded px-2 py-1">
-                  <option value="">All</option>
-                  <option value="reserve">Reserve</option>
-                  <option value="re-reserve">Re-Reserve</option>
-                  <option value="cancel">Cancel</option>
-                  <option value="delete">Delete</option>
-                  <option value="manual">Manual</option>
-                </select>
-                <button id="inv-trx-refresh" class="text-[11px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600">↻</button>
+          <div class="grid md:grid-cols-3 gap-5">
+            <div class="md:col-span-2"></div>
+            <div class="flex flex-col gap-3">
+              <div class="flex items-center justify-between">
+                <h3 class="text-sm font-medium">Transactions</h3>
+                <div class="flex items-center gap-2">
+                  <select id="inv-trx-filter" class="text-[11px] bg-slate-700 border border-slate-600 rounded px-2 py-1">
+                    <option value="">All</option>
+                    <option value="reserve">Reserve</option>
+                    <option value="re-reserve">Re-Reserve</option>
+                    <option value="cancel">Cancel</option>
+                    <option value="delete">Delete</option>
+                    <option value="manual">Manual</option>
+                  </select>
+                  <button id="inv-trx-refresh" class="text-[11px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600">↻</button>
+                </div>
+              </div>
+              <div class="overflow-auto max-h-80 soft-scroll border border-slate-700 rounded-lg" id="inv-trx-wrap">
+                <ul id="inv-trx" class="text-[11px] divide-y divide-slate-700/60"></ul>
+                <div id="inv-trx-empty" class="text-center text-[11px] text-slate-500 py-3 hidden">No transactions</div>
               </div>
             </div>
-            <div class="overflow-auto max-h-80 soft-scroll border border-slate-700 rounded-lg" id="inv-trx-wrap">
-              <ul id="inv-trx" class="text-[11px] divide-y divide-slate-700/60"></ul>
-              <div id="inv-trx-empty" class="text-center text-[11px] text-slate-500 py-3 hidden">No transactions</div>
-            </div>
+          </div>
+        </div>
+        <!-- Adjustment Modal -->
+        <div id="inv-adjust-modal" class="hidden fixed inset-0 z-40 items-center justify-center bg-slate-900/70 backdrop-blur-sm">
+          <div class="w-full max-w-sm bg-slate-800 border border-slate-700 rounded-xl p-5 flex flex-col gap-4">
+            <div class="flex items-center justify-between"><h3 class="font-semibold text-sm" id="inv-adjust-title">Adjust Stock</h3><button id="inv-adjust-close" class="text-slate-400 hover:text-slate-200">&times;</button></div>
+            <form id="inv-adjust-form" class="flex flex-col gap-3 text-xs">
+              <div class="flex flex-col gap-1"><label for="inv-adjust-name" class="text-slate-400">Drug</label><input id="inv-adjust-name" class="px-2 py-1 rounded bg-slate-700 border border-slate-600" disabled></div>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="flex flex-col gap-1"><label for="inv-adjust-current" class="text-slate-400">Current Stock</label><input id="inv-adjust-current" class="px-2 py-1 rounded bg-slate-700 border border-slate-600" disabled></div>
+                <div class="flex flex-col gap-1"><label for="inv-adjust-reorder" class="text-slate-400">Reorder Level</label><input id="inv-adjust-reorder" class="px-2 py-1 rounded bg-slate-700 border border-slate-600" disabled></div>
+              </div>
+              <div class="flex flex-col gap-1"><label for="inv-adjust-delta" class="text-slate-400">Delta (+/-)</label><input id="inv-adjust-delta" type="number" class="px-2 py-1 rounded bg-slate-700 border border-slate-600" required placeholder="e.g. 25 or -10"></div>
+              <div class="flex flex-col gap-1"><label for="inv-adjust-reason" class="text-slate-400">Reason</label><input id="inv-adjust-reason" class="px-2 py-1 rounded bg-slate-700 border border-slate-600" placeholder="manual"></div>
+              <div class="flex items-center justify-end gap-2 pt-2">
+                <button type="button" id="inv-adjust-cancel" class="text-[11px] px-3 py-1.5 rounded bg-slate-600 hover:bg-slate-500">Cancel</button>
+                <button type="submit" class="text-[11px] px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-2"><span>Apply</span><span class="spinner hidden" id="inv-adjust-spin"></span></button>
+              </div>
+              <div id="inv-adjust-error" class="text-[11px] text-rose-400"></div>
+            </form>
           </div>
         </div>
       </section>
@@ -467,13 +506,8 @@
       // Adaptive API base detection
       let API_BASE = localStorage.getItem('apiBase') || 'http://127.0.0.1:8000';
       async function probe(url){
-        try {
-          const r= await fetch(url+'/api/health',{method:'GET'});
-          if(r.ok) return true;
-        } catch(_err) {
-          return false;
-        }
-        return false; 
+        const r= await fetch(url+'/api/health',{method:'GET'}).catch(()=>null);
+        return !!(r && r.ok);
       }
       async function detectAPIBase(){
         const overrideParam=new URLSearchParams(location.search).get('api');
@@ -1265,27 +1299,80 @@ if(patientForm && !patientForm.__bound){
   function updateOnline(){ const b=document.getElementById('offline-banner'); if(navigator.onLine){ b.classList.add('hidden'); } else { b.classList.remove('hidden'); } }
   window.addEventListener('online', updateOnline); window.addEventListener('offline', updateOnline); updateOnline();
 
-      // INVENTORY FEATURE
-      async function renderInventory(){
-        const drugs = window.__drugs||[];
+      // INVENTORY FEATURE (revamped)
+      const inventoryState={ sort:{key:'name',dir:'asc'}, page:1, pageSize:25, cache:[], summary:[], merged:[], loading:false };
+      function setInventoryLoading(v){ inventoryState.loading=v; document.getElementById('inv-loading').classList.toggle('hidden', !v); }
+      async function loadInventoryData(){
+        setInventoryLoading(true);
+        try {
+          await refreshDrugs(); // sets window.__drugs
+          const summary = await call('/api/inventory/summary');
+          inventoryState.summary=summary||[];
+          inventoryState.cache=(window.__drugs||[]).slice();
+          mergeInventorySummary();
+          renderInventory();
+          updateInventoryMetrics();
+        } catch(e){ console.error('inventory load', e); toast('Inventory load failed','error'); }
+        finally { setInventoryLoading(false); }
+      }
+      function mergeInventorySummary(){
+        const map=new Map(inventoryState.summary.map(s=>[s.id,s]));
+  inventoryState.merged=inventoryState.cache.map(d=> ({...d, ...(map.get(d.id)||{})}));
+      }
+      function updateInventoryMetrics(){
+        const el=document.getElementById('inv-metrics'); if(!el) return;
+        const rows=inventoryState.merged;
+        if(!rows.length){ el.innerHTML=''; return; }
+  let low=0, total=0, pending=0; rows.forEach(r=>{ total+= (r.stock||0); if((r.stock||0) <= (r.reorder_level||0)){ low++; } pending += (r.pending_quantity||0); });
+        el.innerHTML=`<div class='px-2 py-1 rounded bg-slate-700/60 border border-slate-600'>Items: ${rows.length}</div>
+          <div class='px-2 py-1 rounded bg-slate-700/60 border border-slate-600'>Total Stock: ${total}</div>
+          <div class='px-2 py-1 rounded bg-slate-700/60 border border-slate-600 ${low? 'text-rose-300':''}'>Low: ${low}</div>
+          <div class='px-2 py-1 rounded bg-slate-700/60 border border-slate-600'>Pending: ${pending}</div>`;
+        const lowCountEl=document.getElementById('inv-low-count');
+        lowCountEl.textContent= low? low+' low stock' : '';
+        lowCountEl.classList.toggle('hidden', !low);
+      }
+      function inventoryFiltered(){
         const search=(document.getElementById('inv-search').value||'').toLowerCase();
         const lowOnly=document.getElementById('inv-low-toggle').checked;
-        const body=document.getElementById('inv-body'); const empty=document.getElementById('inv-empty'); const lowCountEl=document.getElementById('inv-low-count');
-        let rows=drugs.slice();
-        let lowCount=0;
-        rows.forEach(d=>{ if((d.stock||0) <= (d.reorder_level||0)){ lowCount++; } });
-        if(search){ rows=rows.filter(d=> d.name.toLowerCase().includes(search) || (d.dosage||'').toLowerCase().includes(search) || String(d.id)===search); }
+        let rows=inventoryState.merged.slice();
+        if(search){ rows=rows.filter(d=> d.name.toLowerCase().includes(search)|| (d.dosage||'').toLowerCase().includes(search) || String(d.id)===search); }
         if(lowOnly){ rows=rows.filter(d=> (d.stock||0) <= (d.reorder_level||0)); }
-        rows.sort((a,b)=> a.name.localeCompare(b.name));
-        body.innerHTML= rows.map(d=>{
+        // sort
+        const {key,dir}=inventoryState.sort;
+        rows.sort((a,b)=>{
+          let av=a[key]; let bv=b[key];
+          av = (av===undefined||av===null)? '' : av;
+          bv = (bv===undefined||bv===null)? '' : bv;
+          if(typeof av==='string'){ av=av.toLowerCase(); bv=bv.toLowerCase(); }
+          if(av < bv) return dir==='asc'? -1: 1;
+          if(av > bv) return dir==='asc'? 1: -1;
+          return 0;
+        });
+        return rows;
+      }
+      function renderInventory(){
+        const body=document.getElementById('inv-body'); const empty=document.getElementById('inv-empty');
+        const rows=inventoryFiltered();
+        const pageSize=inventoryState.pageSize; const page=inventoryState.page;
+        const total=rows.length; const pages=Math.max(1, Math.ceil(total/pageSize));
+        if(page>pages){ inventoryState.page=1; }
+        const start=(inventoryState.page-1)*pageSize;
+        const pageRows=rows.slice(start,start+pageSize);
+        body.innerHTML= pageRows.map(d=>{
           const low=(d.stock||0) <= (d.reorder_level||0);
           const badge = low? "<span class='text-[10px] px-1.5 py-0.5 rounded bg-rose-600/30 text-rose-300 border border-rose-500/30'>Low</span>" : "<span class='text-[10px] px-1.5 py-0.5 rounded bg-emerald-600/20 text-emerald-300 border border-emerald-500/30'>OK</span>";
+          const pend=d.pending_quantity??0; const daily=d.daily_avg??0; const days=d.days_supply??'—';
+          const ds= typeof days==='number'? days : '—';
           return `<tr class='hover:bg-slate-700/40 ${low? 'bg-rose-950/20':''}'>
-            <td class='px-3 py-2 text-slate-400 font-medium'>${d.id}</td>
+            <td class='px-3 py-2 text-slate-500 font-medium'>${d.id}</td>
             <td class='px-3 py-2'>${escapeHTML(d.name)}</td>
             <td class='px-3 py-2 text-slate-400'>${escapeHTML(d.dosage||'')}</td>
-            <td class='px-3 py-2 ${low? 'text-rose-300 font-medium':'text-slate-300'}'>${d.stock??0}</td>
+            <td class='px-3 py-2 ${low? 'text-rose-300 font-semibold':'text-slate-200'}'>${d.stock??0}</td>
             <td class='px-3 py-2 text-slate-400'>${d.reorder_level??0}</td>
+            <td class='px-3 py-2 text-slate-300'>${pend}</td>
+            <td class='px-3 py-2 text-slate-300'>${daily}</td>
+            <td class='px-3 py-2 text-slate-300'>${ds}</td>
             <td class='px-3 py-2'>${badge}</td>
             <td class='px-3 py-2 text-right'>
               <button class='text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600' data-inv-adjust='${d.id}'>Adjust</button>
@@ -1293,8 +1380,10 @@ if(patientForm && !patientForm.__bound){
           </tr>`;
         }).join('');
         empty.classList.toggle('hidden', !!rows.length);
-        lowCountEl.textContent= lowCount? lowCount + ' low stock' : '';
-        lowCountEl.classList.toggle('hidden', !lowCount);
+        document.getElementById('inv-page-info').textContent=`Page ${inventoryState.page} / ${Math.max(1, Math.ceil(total/pageSize))} • ${total} items`;
+        document.getElementById('inv-prev').disabled= inventoryState.page<=1;
+        document.getElementById('inv-next').disabled= inventoryState.page>=pages;
+        updateInventoryMetrics();
       }
       async function fetchInventoryTransactions(){
         try { const trx= await call('/api/inventory/transactions?limit=300'); window.__inv_trx = trx; renderInventoryTransactions(); } catch(e){ console.error('trx load', e); }
@@ -1307,23 +1396,32 @@ if(patientForm && !patientForm.__bound){
         if(filter){ const f=filter.toLowerCase(); rows=rows.filter(r=> (r.reason||'').toLowerCase().includes(f)); }
         if(!rows.length){ list.innerHTML=''; empty.classList.remove('hidden'); return; } else { empty.classList.add('hidden'); }
         list.innerHTML= rows.map(r=>{
-          const sign=r.delta>0? '+' : '';
-          const color=r.delta>0? 'text-emerald-300' : 'text-rose-300';
+          const sign=r.delta>0? '+' : ''; const color=r.delta>0? 'text-emerald-300' : 'text-rose-300';
           return `<li class='px-2 py-1 flex justify-between items-center hover:bg-slate-700/40'>
-            <span class='text-slate-400'>#${r.id}</span>
+            <span class='text-slate-500'>#${r.id}</span>
             <span class='flex-1 px-2 truncate'>${escapeHTML(r.reason||'—')}</span>
             <span class='${color} font-mono text-[11px]'>${sign}${r.delta}</span>
-          </li>`;
-        }).join('');
+          </li>`; }).join('');
       }
-      document.addEventListener('input', e=>{ if(e.target.id==='inv-search'){ renderInventory(); } });
-      document.addEventListener('change', e=>{ if(e.target.id==='inv-low-toggle'){ renderInventory(); } if(e.target.id==='inv-trx-filter'){ renderInventoryTransactions(); } });
-      document.addEventListener('click', async e=>{
-        if(e.target.id==='inv-refresh'){ await refreshDrugs(); renderInventory(); loadStats(); }
-        if(e.target.id==='inv-trx-refresh'){ fetchInventoryTransactions(); }
-        if(e.target.id==='inv-export'){ const rows=(window.__drugs||[]).map(d=>({id:d.id,name:d.name,dosage:d.dosage,stock:d.stock,reorder_level:d.reorder_level,status:(d.stock||0)<= (d.reorder_level||0)?'LOW':'OK'})); if(!rows.length){ toast('No data','error'); return; } downloadFile('inventory.csv', toCSV(rows)); }
-        if(e.target.matches('button[data-inv-adjust]')){ const id=Number(e.target.getAttribute('data-inv-adjust')); const deltaStr=prompt('Adjust stock by (e.g. 25 or -10)'); if(deltaStr===null){ return; } const delta=parseInt(deltaStr,10); if(isNaN(delta)){ alert('Invalid number'); return; } const reason=prompt('Reason','manual'); try { await call('/api/inventory/adjust',{method:'POST', body: JSON.stringify({drug_id:id, delta, reason})}); toast('Adjusted','success'); await refreshDrugs(); renderInventory(); loadStats(); fetchInventoryTransactions(); } catch(err){ console.error(err); toast('Adjust failed','error'); } }
-      });
+      // EVENT HANDLERS
+      document.addEventListener('input', e=>{ if(e.target.id==='inv-search'){ inventoryState.page=1; renderInventory(); } });
+      document.addEventListener('change', e=>{ if(e.target.id==='inv-low-toggle'){ inventoryState.page=1; renderInventory(); } if(e.target.id==='inv-trx-filter'){ renderInventoryTransactions(); } if(e.target.id==='inv-pagesize'){ inventoryState.pageSize=parseInt(e.target.value,10)||25; inventoryState.page=1; renderInventory(); }});
+      const inventoryClickHandlers={
+        'inv-refresh': ()=> loadInventoryData(),
+        'inv-prev': ()=>{ if(inventoryState.page>1){ inventoryState.page--; renderInventory(); } },
+        'inv-next': ()=>{ inventoryState.page++; renderInventory(); },
+        'inv-trx-refresh': ()=> fetchInventoryTransactions(),
+        'inv-export': ()=>{ const rows=inventoryFiltered().map(d=>({id:d.id,name:d.name,dosage:d.dosage,stock:d.stock,reorder_level:d.reorder_level,pending:d.pending_quantity,daily_avg:d.daily_avg,days_supply:d.days_supply,status:(d.stock||0)<= (d.reorder_level||0)?'LOW':'OK'})); if(!rows.length){ toast('No data','error'); return; } downloadFile('inventory.csv', toCSV(rows)); },
+        'inv-adjust-close': ()=> closeInventoryAdjust(),
+        'inv-adjust-cancel': ()=> closeInventoryAdjust()
+      };
+      document.addEventListener('click', e=>{ const t=e.target; if(t.dataset && t.dataset.sort){ const key=t.dataset.sort; if(inventoryState.sort.key===key){ inventoryState.sort.dir= inventoryState.sort.dir==='asc'? 'desc':'asc'; } else { inventoryState.sort.key=key; inventoryState.sort.dir='asc'; } renderInventory(); return; } if(t.matches && t.matches('button[data-inv-adjust]')){ const id=Number(t.getAttribute('data-inv-adjust')); openInventoryAdjust(id); return; } const fn=inventoryClickHandlers[t.id]; if(fn){ fn(); } });
+      function openInventoryAdjust(id){ const modal=document.getElementById('inv-adjust-modal'); const drug=inventoryState.merged.find(d=> d.id===id); if(!drug){ return; } modal.classList.remove('hidden'); modal.classList.add('flex'); modal.dataset.drugId=id; document.getElementById('inv-adjust-name').value=`${drug.name} (${drug.dosage||''})`; document.getElementById('inv-adjust-current').value=drug.stock||0; document.getElementById('inv-adjust-reorder').value=drug.reorder_level||0; document.getElementById('inv-adjust-delta').value=''; document.getElementById('inv-adjust-reason').value='manual'; document.getElementById('inv-adjust-error').textContent=''; }
+      function closeInventoryAdjust(){ const modal=document.getElementById('inv-adjust-modal'); modal.classList.add('hidden'); modal.classList.remove('flex'); }
+      document.getElementById('inv-adjust-form').addEventListener('submit', async e=>{ e.preventDefault(); const modal=document.getElementById('inv-adjust-modal'); const id=Number(modal.dataset.drugId); const delta=parseInt(document.getElementById('inv-adjust-delta').value,10); const reason=document.getElementById('inv-adjust-reason').value||'manual'; if(isNaN(delta)||!delta){ document.getElementById('inv-adjust-error').textContent='Enter a non-zero number'; return; } const spin=document.getElementById('inv-adjust-spin'); spin.classList.remove('hidden'); try { await call('/api/inventory/adjust',{method:'POST', body: JSON.stringify({drug_id:id, delta, reason})}); toast('Adjusted','success'); await loadInventoryData(); fetchInventoryTransactions(); closeInventoryAdjust(); } catch(err){ console.error(err); document.getElementById('inv-adjust-error').textContent='Adjustment failed'; } finally { spin.classList.add('hidden'); } });
+      // override activateTab to ensure loadInventoryData only once until manual refresh
+      const origActivateInv=activateTab; let inventoryBooted=false;
+      activateTab=function(tab){ origActivateInv(tab); if(tab==='inventory'){ if(!inventoryBooted){ inventoryBooted=true; loadInventoryData(); fetchInventoryTransactions(); } }};
       // Enhance delivery quantity submission with client-side stock check
       const deliveryForm=document.getElementById('delivery-form');
       if(deliveryForm && !deliveryForm.__invHooked){
