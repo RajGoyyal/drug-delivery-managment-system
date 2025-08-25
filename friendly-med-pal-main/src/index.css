@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Base Neutrals (cool slate) */
+    --background: 220 23% 98%;          /* slate-50 */
+    --foreground: 222 47% 11%;          /* slate-900 */
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Brand shift: teal + indigo dual-tone */
+    --primary: 200 76% 45%;             /* teal-cyan */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 222 17% 90%;           /* slate-200 */
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 215 20% 96%;               /* slate-100 */
+    --muted-foreground: 215 16% 46%;
+
+    --accent: 248 87% 65%;              /* indigo / violet accent */
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 248 87% 65%;
+
+    /* Functional (medical) semantics */
+    --medical-success: 160 84% 39%;      /* emerald-500 tuned */
+    --medical-warning: 35 92% 52%;      /* legacy (amber) - deprecated */
+    --medical-pending: 210 100% 50%;    /* new pending (blue) */
+    --medical-info: 200 100% 43%;       /* cyan-500 */
+    --medical-accent: 200 76% 45%;      /* mirrors primary */
+    
+    /* Gradients (updated to new brand) */
+    --gradient-medical: linear-gradient(135deg, hsl(200 76% 45%) 0%, hsl(248 87% 65%) 100%);
+    --gradient-subtle: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 23% 98%) 100%);
+
+    --radius: 0.6rem;
+
+    /* Sidebar */
+    --sidebar-background: 222 47% 11%;      /* dark slate for contrast */
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 248 87% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 17% 20%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 222 17% 20%;
+    --sidebar-ring: 200 76% 45%;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 220 23% 98%;
+
+    --card: 222 27% 17%;
+    --card-foreground: 220 23% 98%;
+
+    --popover: 222 27% 17%;
+    --popover-foreground: 220 23% 98%;
+
+    --primary: 248 87% 65%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 222 17% 30%;
+    --secondary-foreground: 220 23% 98%;
+
+    --muted: 222 17% 30%;
+    --muted-foreground: 215 20% 70%;
+
+    --accent: 200 76% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 222 17% 30%;
+    --input: 222 17% 30%;
+    --ring: 248 87% 65%;
+
+    --medical-success: 160 84% 39%;
+    --medical-warning: 35 92% 52%;
+    --medical-pending: 210 100% 66%;
+    --medical-info: 200 100% 43%;
+    --medical-accent: 248 87% 65%;
+    
+    --gradient-medical: linear-gradient(135deg, hsl(248 87% 65%) 0%, hsl(200 76% 45%) 100%);
+    --gradient-subtle: linear-gradient(180deg, hsl(222 47% 11%) 0%, hsl(222 27% 17%) 100%);
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 220 23% 98%;
+    --sidebar-primary: 200 76% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 17% 20%;
+    --sidebar-accent-foreground: 220 23% 98%;
+    --sidebar-border: 222 17% 20%;
+    --sidebar-ring: 248 87% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
