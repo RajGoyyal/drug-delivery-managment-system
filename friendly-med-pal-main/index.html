@@ -83,11 +83,11 @@
         <button data-tab="settings" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Settings</button>
       </nav>
 
-      <section data-view="dashboard" class="space-y-8">
+  <section data-view="dashboard" class="space-y-8">
     <div class="relative overflow-hidden rounded-2xl glass p-10 card-hover">
           <div class="absolute inset-0 opacity-[0.15] pointer-events-none" style="background-image: radial-gradient(circle at 25% 15%, #6366f1 0, transparent 60%), radial-gradient(circle at 75% 85%, #0ea5e9 0, transparent 55%);"></div>
           <div class="relative space-y-4">
-      <h2 class="text-3xl font-semibold tracking-tight heading-gradient">Welcome back 👋</h2>
+  <h2 class="text-3xl font-semibold tracking-tight heading-gradient flex items-center gap-3">Welcome back 👋 <button id="refresh-dashboard" class="text-xs px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button></h2>
       <p class="text-sm text-slate-300/80 leading-relaxed max-w-prose">Monitor medication logistics, track adherence, and keep patient therapy on schedule. Use quick stats & distribution to spot issues early.</p>
             <div class="flex flex-wrap gap-2">
               <button id="seed-btn" class="text-xs px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-2 disabled:opacity-50" title="Insert demo data">Seed Demo Data</button>
@@ -116,7 +116,7 @@
 
       <!-- Patients View -->
   <section data-view="patients" class="bg-slate-800 border border-slate-700 rounded-lg shadow p-5 space-y-4 hidden">
-  <h2 class="font-semibold flex items-center gap-2">Patients <input id="patient-filter" placeholder="Filter" class="ml-3 flex-1 max-w-[160px] text-xs border border-slate-600 rounded px-2 py-1 bg-slate-700 placeholder-slate-400 text-slate-100" /><button id="export-patients" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600 ml-auto">Export</button></h2>
+  <h2 class="font-semibold flex items-center gap-2">Patients <input id="patient-filter" placeholder="Filter" class="ml-3 flex-1 max-w-[160px] text-xs border border-slate-600 rounded px-2 py-1 bg-slate-700 placeholder-slate-400 text-slate-100" /><button id="refresh-patients" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button><button id="export-patients" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600 ml-auto">Export</button></h2>
           <form id="patient-form" class="grid gap-3 text-sm">
             <input name="name" required placeholder="Name" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
             <input name="age" type="number" min="0" placeholder="Age" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
@@ -131,7 +131,7 @@
 
       <!-- Drugs View -->
   <section data-view="drugs" class="bg-slate-800 border border-slate-700 rounded-lg shadow p-5 space-y-4 hidden">
-  <h2 class="font-semibold flex items-center gap-2">Drugs <input id="drug-filter" placeholder="Filter" class="ml-3 flex-1 max-w-[160px] text-xs border border-slate-600 rounded px-2 py-1 bg-slate-700 placeholder-slate-400 text-slate-100" /><button id="export-drugs" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600 ml-auto">Export</button></h2>
+  <h2 class="font-semibold flex items-center gap-2">Drugs <input id="drug-filter" placeholder="Filter" class="ml-3 flex-1 max-w-[160px] text-xs border border-slate-600 rounded px-2 py-1 bg-slate-700 placeholder-slate-400 text-slate-100" /><button id="refresh-drugs" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button><button id="export-drugs" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600 ml-auto">Export</button></h2>
           <form id="drug-form" class="grid gap-3 text-sm">
             <input name="name" required placeholder="Name" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
             <input name="dosage" placeholder="Dosage" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
@@ -147,7 +147,7 @@
 
       <!-- Deliveries View -->
   <section data-view="deliveries" class="bg-slate-800 border border-slate-700 rounded-lg shadow p-5 space-y-4 hidden">
-  <h2 class="font-semibold flex items-center gap-4">Deliveries <span class="text-xs font-normal text-slate-400" id="refresh-countdown"></span><label class="ml-auto inline-flex items-center gap-1 text-xs cursor-pointer select-none"><input type="checkbox" id="auto-refresh" class="accent-indigo-500" checked /> Auto</label><button id="toggle-overdue" class="text-[10px] px-2 py-1 rounded border border-slate-600 bg-slate-700 hover:bg-slate-600" title="Toggle overdue pending deliveries">Overdue</button><button id="export-deliveries" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Export</button></h2>
+  <h2 class="font-semibold flex items-center gap-4">Deliveries <span class="text-xs font-normal text-slate-400" id="refresh-countdown"></span><button id="refresh-deliveries" class="text-[10px] px-2 py-1 rounded border border-slate-600 bg-slate-700 hover:bg-slate-600">Refresh</button><label class="ml-auto inline-flex items-center gap-1 text-xs cursor-pointer select-none"><input type="checkbox" id="auto-refresh" class="accent-indigo-500" checked /> Auto</label><button id="toggle-overdue" class="text-[10px] px-2 py-1 rounded border border-slate-600 bg-slate-700 hover:bg-slate-600" title="Toggle overdue pending deliveries">Overdue</button><button id="export-deliveries" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Export</button></h2>
     <div id="delivery-status-filters" class="flex flex-wrap gap-2 text-[11px]"></div>
         <form id="delivery-form" class="grid gap-3 md:grid-cols-2 text-sm">
   <select name="patient_id" required class="border border-slate-600 rounded px-3 py-2 bg-slate-700 text-slate-100"></select>
@@ -165,7 +165,7 @@
 
       <!-- History View -->
     <section data-view="history" class="bg-slate-800 border border-slate-700 rounded-lg shadow p-5 space-y-4 hidden">
-    <h2 class="font-semibold flex items-center gap-4">History <span class="text-xs font-normal text-slate-400" id="history-count"></span></h2>
+  <h2 class="font-semibold flex items-center gap-4">History <span class="text-xs font-normal text-slate-400" id="history-count"></span><button id="refresh-history" class="text-[10px] px-2 py-1 rounded border border-slate-600 bg-slate-700 hover:bg-slate-600 ml-auto">Refresh</button></h2>
         <div class="flex flex-wrap gap-3 text-xs items-end">
           <label class="flex flex-col gap-1">Status
             <select id="history-status" class="border border-slate-600 rounded px-2 py-1 bg-slate-700 text-slate-100">
@@ -186,7 +186,7 @@
 
       <!-- Analytics View -->
       <section data-view="analytics" class="bg-slate-800 border border-slate-700 rounded-lg shadow p-5 space-y-5 hidden">
-        <h2 class="font-semibold flex items-center gap-3">Analytics <span id="analytics-range" class="text-xs font-normal text-slate-400"></span></h2>
+  <h2 class="font-semibold flex items-center gap-3">Analytics <span id="analytics-range" class="text-xs font-normal text-slate-400"></span><button id="refresh-analytics" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600 ml-auto">Refresh</button></h2>
         <div class="grid gap-4 md:grid-cols-2">
           <div class="space-y-3">
             <h3 class="text-sm font-medium flex items-center gap-2">Daily Delivery Volume <button id="analytics-refresh" class="text-[10px] px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600">Reload</button></h3>
@@ -206,7 +206,7 @@
       <!-- Calendar View -->
       <section data-view="calendar" class="bg-slate-800 border border-slate-700 rounded-lg shadow p-5 space-y-5 hidden">
         <div class="flex items-center gap-3">
-          <h2 class="font-semibold flex-1" id="cal-title">Calendar</h2>
+          <h2 class="font-semibold flex-1 flex items-center gap-3" id="cal-title">Calendar <button id="refresh-calendar" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button></h2>
           <div class="flex gap-1">
             <button id="cal-prev" class="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600">Prev</button>
             <button id="cal-today" class="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600">Today</button>
@@ -222,13 +222,13 @@
 
       <!-- Alerts View -->
       <section data-view="alerts" class="bg-slate-800 border border-slate-700 rounded-lg shadow p-5 space-y-4 hidden">
-        <h2 class="font-semibold flex items-center gap-2">Alerts <span id="alert-count" class="text-xs font-normal text-slate-400"></span></h2>
+  <h2 class="font-semibold flex items-center gap-2">Alerts <span id="alert-count" class="text-xs font-normal text-slate-400"></span><button id="refresh-alerts" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600 ml-auto">Refresh</button></h2>
         <div id="alert-list" class="space-y-2 text-[11px]"></div>
       </section>
 
       <!-- Settings View -->
       <section data-view="settings" class="bg-slate-800 border border-slate-700 rounded-lg shadow p-5 space-y-6 hidden">
-        <h2 class="font-semibold">Settings</h2>
+  <h2 class="font-semibold flex items-center gap-3">Settings <button id="refresh-settings" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Reload Defaults</button></h2>
         <form id="settings-form" class="space-y-4 text-sm max-w-md">
           <div class="flex flex-col gap-1">
             <label for="set-refresh" class="text-xs uppercase tracking-wide text-slate-400">Auto Refresh Interval (seconds)</label>
@@ -254,7 +254,7 @@
       <!-- All Patients Overview -->
       <section data-view="all-patients" class="glass rounded-xl p-6 space-y-4 hidden">
         <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-          <h2 class="text-lg font-semibold heading-gradient">All Patients</h2>
+          <h2 class="text-lg font-semibold heading-gradient flex items-center gap-3">All Patients <button id="refresh-all-patients" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button></h2>
           <div class="flex items-center gap-2 ml-auto">
             <input id="all-patients-search" placeholder="Search" class="bg-slate-900/40 border border-slate-600 rounded px-2 py-1 text-xs placeholder-slate-500" />
             <button id="export-all-patients" class="text-[10px] px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Export All</button>
@@ -288,7 +288,7 @@
       <!-- All Drugs Overview -->
       <section data-view="all-drugs" class="glass rounded-xl p-6 space-y-4 hidden">
         <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-          <h2 class="text-lg font-semibold heading-gradient">All Drugs</h2>
+          <h2 class="text-lg font-semibold heading-gradient flex items-center gap-3">All Drugs <button id="refresh-all-drugs" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button></h2>
           <div class="flex items-center gap-2 ml-auto">
             <input id="all-drugs-search" placeholder="Search" class="bg-slate-900/40 border border-slate-600 rounded px-2 py-1 text-xs placeholder-slate-500" />
             <button id="export-all-drugs" class="text-[10px] px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Export All</button>
@@ -326,7 +326,7 @@
       <!-- All Deliveries Overview -->
       <section data-view="all-deliveries" class="glass rounded-xl p-6 space-y-4 hidden">
         <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-          <h2 class="text-lg font-semibold heading-gradient">All Deliveries</h2>
+          <h2 class="text-lg font-semibold heading-gradient flex items-center gap-3">All Deliveries <button id="refresh-all-deliveries" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button></h2>
           <div class="flex items-center gap-2 ml-auto">
             <input id="all-deliveries-search" placeholder="Search (id / status / notes)" class="bg-slate-900/40 border border-slate-600 rounded px-2 py-1 text-xs placeholder-slate-500" />
             <button id="export-all-deliveries" class="text-[10px] px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Export All</button>
@@ -1416,6 +1416,26 @@ if(patientForm && !patientForm.__bound){
         'inv-adjust-cancel': ()=> closeInventoryAdjust()
       };
       document.addEventListener('click', e=>{ const t=e.target; if(t.dataset && t.dataset.sort){ const key=t.dataset.sort; if(inventoryState.sort.key===key){ inventoryState.sort.dir= inventoryState.sort.dir==='asc'? 'desc':'asc'; } else { inventoryState.sort.key=key; inventoryState.sort.dir='asc'; } renderInventory(); return; } if(t.matches && t.matches('button[data-inv-adjust]')){ const id=Number(t.getAttribute('data-inv-adjust')); openInventoryAdjust(id); return; } const fn=inventoryClickHandlers[t.id]; if(fn){ fn(); } });
+      // Global refresh buttons wiring
+      document.addEventListener('click', async e=>{
+        const id=e.target.id;
+        try {
+          switch(id){
+            case 'refresh-dashboard': setLoading(true,'Refreshing'); await Promise.all([refreshPatients(), refreshDrugs(), refreshDeliveries()]); loadStats(); renderActivity(); setLoading(false); break;
+            case 'refresh-patients': setLoading(true,'Patients'); await refreshPatients(); renderPatients(); setLoading(false); break;
+            case 'refresh-drugs': setLoading(true,'Drugs'); await refreshDrugs(); renderDrugs(); setLoading(false); break;
+            case 'refresh-deliveries': setLoading(true,'Deliveries'); await refreshDeliveries(); renderDeliveries(); renderAllDeliveries && renderAllDeliveries(); loadStats(); setLoading(false); break;
+            case 'refresh-history': setLoading(true,'History'); await refreshDeliveries(); renderHistory && renderHistory(); setLoading(false); break;
+            case 'refresh-analytics': setLoading(true,'Analytics'); await refreshDeliveries(); buildAnalytics && buildAnalytics(); setLoading(false); break;
+            case 'refresh-calendar': setLoading(true,'Calendar'); await refreshDeliveries(); renderCalendar && renderCalendar(); setLoading(false); break;
+            case 'refresh-alerts': setLoading(true,'Alerts'); await refreshDrugs(); loadStats(); setLoading(false); break;
+            case 'refresh-settings': loadSettings && loadSettings(); toast('Defaults loaded','success'); break;
+            case 'refresh-all-patients': setLoading(true,'Patients'); await refreshPatients(); renderAllPatients && renderAllPatients(); setLoading(false); break;
+            case 'refresh-all-drugs': setLoading(true,'Drugs'); await refreshDrugs(); renderAllDrugs && renderAllDrugs(); setLoading(false); break;
+            case 'refresh-all-deliveries': setLoading(true,'Deliveries'); await refreshDeliveries(); renderAllDeliveries && renderAllDeliveries(); setLoading(false); break;
+          }
+        } catch(err){ console.error(err); toast('Refresh failed','error'); setLoading(false); }
+      });
       function openInventoryAdjust(id){ const modal=document.getElementById('inv-adjust-modal'); const drug=inventoryState.merged.find(d=> d.id===id); if(!drug){ return; } modal.classList.remove('hidden'); modal.classList.add('flex'); modal.dataset.drugId=id; document.getElementById('inv-adjust-name').value=`${drug.name} (${drug.dosage||''})`; document.getElementById('inv-adjust-current').value=drug.stock||0; document.getElementById('inv-adjust-reorder').value=drug.reorder_level||0; document.getElementById('inv-adjust-delta').value=''; document.getElementById('inv-adjust-reason').value='manual'; document.getElementById('inv-adjust-error').textContent=''; }
       function closeInventoryAdjust(){ const modal=document.getElementById('inv-adjust-modal'); modal.classList.add('hidden'); modal.classList.remove('flex'); }
       document.getElementById('inv-adjust-form').addEventListener('submit', async e=>{ e.preventDefault(); const modal=document.getElementById('inv-adjust-modal'); const id=Number(modal.dataset.drugId); const delta=parseInt(document.getElementById('inv-adjust-delta').value,10); const reason=document.getElementById('inv-adjust-reason').value||'manual'; if(isNaN(delta)||!delta){ document.getElementById('inv-adjust-error').textContent='Enter a non-zero number'; return; } const spin=document.getElementById('inv-adjust-spin'); spin.classList.remove('hidden'); try { await call('/api/inventory/adjust',{method:'POST', body: JSON.stringify({drug_id:id, delta, reason})}); toast('Adjusted','success'); await loadInventoryData(); fetchInventoryTransactions(); closeInventoryAdjust(); } catch(err){ console.error(err); document.getElementById('inv-adjust-error').textContent='Adjustment failed'; } finally { spin.classList.add('hidden'); } });
