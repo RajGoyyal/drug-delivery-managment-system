@@ -7,9 +7,11 @@ from __future__ import annotations
 import sqlite3
 from sqlite3 import Connection
 from typing import Optional
+from pathlib import Path
 
-# Default database path (a file will be created if it doesn't exist)
-DEFAULT_DB_PATH = "drug_delivery.db"
+# Default database path (always resolved inside the backend package directory)
+_BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_DB_PATH = str(_BASE_DIR / "drug_delivery.db")
 
 # --- Schema DDL -------------------------------------------------------------
 # We keep the DDL here so it's easy to review and version.

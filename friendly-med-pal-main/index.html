@@ -1,24 +1,703 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MedDelivery - Drug Delivery Management System</title>
+  <meta name="description" content="Efficient drug delivery management system for healthcare professionals" />
+  <meta name="author" content="MedDelivery Team" />
+
+  <meta property="og:title" content="MedDelivery - Drug Delivery Management System" />
+  <meta property="og:description" content="Efficient drug delivery management system for healthcare professionals" />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@lovable_dev" />
+  <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+
+  <!DOCTYPE html>
+  <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MedDelivery - Drug Delivery Management System</title>
-    <meta name="description" content="Efficient drug delivery management system for healthcare professionals" />
-    <meta name="author" content="MedDelivery Team" />
-
-    <meta property="og:title" content="MedDelivery - Drug Delivery Management System" />
-    <meta property="og:description" content="Efficient drug delivery management system for healthcare professionals" />
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@lovable_dev" />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <title>Friendly Med Pal 2.0</title>
+    <link rel="icon" href="/favicon.ico" />
+    <script>
+      tailwind.config = { darkMode: 'class' };
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body { font-feature-settings: "cv02","cv03","cv04","cv11"; }
+      .fade-enter { opacity:0; transform: translateY(4px); }
+      .fade-enter-active { transition: all .25s; opacity:1; transform: translateY(0); }
+      .spinner { width:18px; height:18px; border:3px solid rgba(255,255,255,.4); border-top-color: #4f46e5; border-radius:50%; animation: spin 0.8s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg);} }
+    </style>
   </head>
+  <body class="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition-colors">
+    <div class="max-w-6xl mx-auto p-6 space-y-10">
+      <header class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+        <div>
+          <h1 class="text-3xl font-bold tracking-tight">Friendly Med Pal</h1>
+          <p class="text-slate-500 dark:text-slate-400 text-sm">Clean rebuilt full‑stack demo (frontend + API)</p>
+        </div>
+        <div class="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+          <button id="theme-toggle" class="px-3 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs">🌙</button>
+          <span id="api-indicator" class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-300 animate-pulse" id="api-dot"></span> API: checking</span>
+        </div>
+      </header>
+      <nav id="main-nav" class="flex flex-wrap gap-2 text-sm mt-2">
+        <button data-tab="dashboard" class="tab-btn px-3 py-1 rounded bg-indigo-600 text-white shadow">Dashboard</button>
+        <button data-tab="patients" class="tab-btn px-3 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800">Patients</button>
+        <button data-tab="drugs" class="tab-btn px-3 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800">Drugs</button>
+        <button data-tab="deliveries" class="tab-btn px-3 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800">Deliveries</button>
+        <button data-tab="history" class="tab-btn px-3 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800">History</button>
+      </nav>
 
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+      <section data-view="dashboard">
+        <div id="stats" class="grid gap-4 sm:grid-cols-3"></div>
+      </section>
+
+      <!-- Patients View -->
+      <section data-view="patients" class="bg-white dark:bg-slate-800 rounded-lg shadow p-5 space-y-4 hidden">
+          <h2 class="font-semibold flex items-center justify-between">Patients <input id="patient-filter" placeholder="Filter" class="ml-3 flex-1 max-w-[140px] text-xs border rounded px-2 py-1 bg-white/60 dark:bg-slate-700 dark:border-slate-600" /></h2>
+          <form id="patient-form" class="grid gap-3 text-sm">
+            <input name="name" required placeholder="Name" class="border rounded px-3 py-2 dark:bg-slate-700 dark:border-slate-600" />
+            <input name="age" type="number" min="0" placeholder="Age" class="border rounded px-3 py-2 dark:bg-slate-700 dark:border-slate-600" />
+            <input name="condition" placeholder="Condition" class="border rounded px-3 py-2 dark:bg-slate-700 dark:border-slate-600" />
+            <div class="flex items-center gap-3">
+              <button class="bg-indigo-600 hover:bg-indigo-500 text-white rounded px-4 py-2 font-medium disabled:opacity-50 flex items-center gap-2" id="patient-submit"><span>Add Patient</span><span class="hidden spinner" id="patient-spinner"></span></button>
+              <p class="text-xs text-red-500" id="patient-error"></p>
+            </div>
+          </form>
+          <ul id="patient-list" class="text-xs space-y-1 max-h-48 overflow-auto divide-y divide-slate-100 dark:divide-slate-700"></ul>
+      </section>
+
+      <!-- Drugs View -->
+      <section data-view="drugs" class="bg-white dark:bg-slate-800 rounded-lg shadow p-5 space-y-4 hidden">
+          <h2 class="font-semibold flex items-center justify-between">Drugs <input id="drug-filter" placeholder="Filter" class="ml-3 flex-1 max-w-[140px] text-xs border rounded px-2 py-1 bg-white/60 dark:bg-slate-700 dark:border-slate-600" /></h2>
+          <form id="drug-form" class="grid gap-3 text-sm">
+            <input name="name" required placeholder="Name" class="border rounded px-3 py-2 dark:bg-slate-700 dark:border-slate-600" />
+            <input name="dosage" placeholder="Dosage" class="border rounded px-3 py-2 dark:bg-slate-700 dark:border-slate-600" />
+            <div class="flex items-center gap-3">
+              <button class="bg-indigo-600 hover:bg-indigo-500 text-white rounded px-4 py-2 font-medium disabled:opacity-50 flex items-center gap-2" id="drug-submit"><span>Add Drug</span><span class="hidden spinner" id="drug-spinner"></span></button>
+              <p class="text-xs text-red-500" id="drug-error"></p>
+            </div>
+          </form>
+          <ul id="drug-list" class="text-xs space-y-1 max-h-48 overflow-auto divide-y divide-slate-100 dark:divide-slate-700"></ul>
+      </section>
+
+      <!-- Deliveries View -->
+      <section data-view="deliveries" class="bg-white dark:bg-slate-800 rounded-lg shadow p-5 space-y-4 hidden">
+        <h2 class="font-semibold flex items-center gap-4">Deliveries <span class="text-xs font-normal text-slate-500 dark:text-slate-400" id="refresh-countdown"></span><label class="ml-auto inline-flex items-center gap-1 text-xs cursor-pointer select-none"><input type="checkbox" id="auto-refresh" class="accent-indigo-600" checked /> Auto</label></h2>
+        <form id="delivery-form" class="grid gap-3 md:grid-cols-2 text-sm">
+          <select name="patient_id" required class="border rounded px-3 py-2 dark:bg-slate-700 dark:border-slate-600"></select>
+          <select name="drug_id" required class="border rounded px-3 py-2 dark:bg-slate-700 dark:border-slate-600"></select>
+          <input type="datetime-local" name="scheduled_for" required class="border rounded px-3 py-2 md:col-span-2 dark:bg-slate-700 dark:border-slate-600" />
+          <input name="notes" placeholder="Notes" class="border rounded px-3 py-2 md:col-span-2 dark:bg-slate-700 dark:border-slate-600" />
+          <div class="flex items-center gap-3 md:col-span-2">
+            <button class="bg-indigo-600 hover:bg-indigo-500 text-white rounded px-4 py-2 font-medium flex items-center gap-2 disabled:opacity-50" id="delivery-submit"><span>Schedule Delivery</span><span class="hidden spinner" id="delivery-spinner"></span></button>
+            <p class="text-xs text-red-500" id="delivery-error"></p>
+          </div>
+        </form>
+        <div id="deliveries" class="space-y-2 text-xs"></div>
+      </section>
+
+      <!-- History View -->
+      <section data-view="history" class="bg-white dark:bg-slate-800 rounded-lg shadow p-5 space-y-4 hidden">
+        <h2 class="font-semibold flex items-center gap-4">History <span class="text-xs font-normal text-slate-500 dark:text-slate-400" id="history-count"></span></h2>
+        <div class="flex flex-wrap gap-3 text-xs items-end">
+          <label class="flex flex-col gap-1">Status
+            <select id="history-status" class="border rounded px-2 py-1 dark:bg-slate-700 dark:border-slate-600">
+              <option value="">All</option>
+              <option>pending</option>
+              <option>delivered</option>
+              <option>missed</option>
+              <option>cancelled</option>
+            </select>
+          </label>
+          <label class="flex flex-col gap-1">Search
+            <input id="history-search" placeholder="patient/drug/id" class="border rounded px-2 py-1 dark:bg-slate-700 dark:border-slate-600" />
+          </label>
+          <button id="history-refresh" class="ml-auto px-3 py-1 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600">Refresh</button>
+        </div>
+        <div id="history-list" class="divide-y divide-slate-100 dark:divide-slate-700 text-xs max-h-80 overflow-auto"></div>
+      </section>
+
+      <footer class="text-center text-xs text-slate-400 py-8">&copy; 2025 Friendly Med Pal 2.0</footer>
+    </div>
+
+    <template id="tpl-stat">
+      <div class="bg-white dark:bg-slate-800 rounded-lg p-4 shadow flex flex-col gap-1">
+        <span class="text-[10px] uppercase tracking-wide text-slate-400" data-part="label"></span>
+        <span class="text-2xl font-semibold" data-part="value"></span>
+      </div>
+    </template>
+
+    <div id="toast-wrap" class="fixed top-4 right-4 z-50 space-y-2 w-64"></div>
+    <div id="loading-overlay" class="hidden fixed inset-0 bg-slate-900/30 backdrop-blur-sm flex items-center justify-center z-40">
+      <div class="bg-white dark:bg-slate-800 px-6 py-4 rounded shadow flex items-center gap-3 text-sm"><span class="spinner !w-6 !h-6 !border-4 !border-slate-300 dark:!border-slate-600 !border-t-indigo-600"></span> <span id="loading-text">Working...</span></div>
+    </div>
+
+    <script>
+      const API_BASE = 'http://127.0.0.1:8000';
+      let globalLoading = 0;
+      function setLoading(on, label='Working...'){
+        globalLoading += on?1:-1; if(globalLoading<0) globalLoading=0;
+        const ov = document.getElementById('loading-overlay');
+        const txt = document.getElementById('loading-text');
+        if(label) txt.textContent = label;
+        if(globalLoading>0) ov.classList.remove('hidden'); else ov.classList.add('hidden');
+      }
+      function toast(msg, type='info'){
+        const wrap=document.getElementById('toast-wrap');
+        const el=document.createElement('div');
+        el.className='fade-enter bg-white dark:bg-slate-800 border text-slate-700 dark:text-slate-200 text-xs px-3 py-2 rounded shadow flex items-start gap-2';
+        const colors={info:'border-slate-200 dark:border-slate-700', success:'border-emerald-300 dark:border-emerald-600', error:'border-red-300 dark:border-red-600'};
+        el.className += ' '+(colors[type]||colors.info);
+        el.innerHTML=`<span>${msg}</span><button class='ml-auto text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'>&times;</button>`;
+        el.querySelector('button').onclick=()=>{el.remove();};
+        wrap.append(el);
+        requestAnimationFrame(()=>{el.classList.add('fade-enter-active');});
+        setTimeout(()=>{el.classList.remove('fade-enter-active'); el.style.opacity='0'; setTimeout(()=>el.remove(),250);}, 4000);
+      }
+      function savePref(key,val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch{} }
+      function loadPref(key,def){ try{ const v=localStorage.getItem(key); return v?JSON.parse(v):def; }catch{ return def; } }
+
+      async function call(path, opts={}) {
+        const res = await fetch(API_BASE + path, {headers:{'Content-Type':'application/json'}, ...opts});
+        if(!res.ok){
+          let msg;
+          try { msg = (await res.json()).detail || await res.text(); } catch { msg = res.statusText; }
+          throw new Error(res.status + ' ' + msg);
+        }
+        return res.json();
+      }
+
+      function stat(label, value){
+        const node = document.getElementById('tpl-stat').content.cloneNode(true);
+        node.querySelector('[data-part=label]').textContent = label;
+        node.querySelector('[data-part=value]').textContent = value;
+        return node;
+      }
+
+      async function loadStats(){
+        const [patients, drugs, deliveries] = await Promise.all([
+          call('/api/patients'), call('/api/drugs'), call('/api/deliveries')
+        ]);
+        const wrap = document.getElementById('stats');
+        wrap.innerHTML='';
+        wrap.append(stat('Patients', patients.length));
+        wrap.append(stat('Drugs', drugs.length));
+        wrap.append(stat('Pending', deliveries.filter(d=>d.status==='pending').length));
+      }
+
+      async function refreshPatients(){
+        const pts = await call('/api/patients');
+        window.__patients = pts;
+        const list = document.getElementById('patient-list');
+        list.innerHTML='';
+        const sel = document.querySelector('select[name=patient_id]');
+        sel.innerHTML='<option value="" disabled selected>Select patient</option>';
+        filterPatients().forEach(p=>{
+          const li=document.createElement('li');
+          li.className='py-1 flex items-center justify-between';
+          li.innerHTML = `<span>${p.id}. <strong>${p.name}</strong>${p.age? ' ('+p.age+')':''} ${p.condition?'<span class="ml-1 text-[10px] px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-700">'+p.condition+'</span>':''}</span>`;
+          list.append(li);
+          const opt=document.createElement('option');
+          opt.value=p.id; opt.textContent=p.name; sel.append(opt);
+        });
+      }
+
+      async function refreshDrugs(){
+        const drugs = await call('/api/drugs');
+        window.__drugs = drugs;
+        const list = document.getElementById('drug-list');
+        list.innerHTML='';
+        const sel = document.querySelector('select[name=drug_id]');
+        sel.innerHTML='<option value="" disabled selected>Select drug</option>';
+        filterDrugs().forEach(d=>{
+          const li=document.createElement('li');
+          li.className='py-1 flex items-center justify-between';
+          li.innerHTML = `${d.id}. <strong>${d.name}</strong>${d.dosage? ' <span class="text-[10px] px-1 py-0.5 rounded bg-indigo-100 dark:bg-indigo-600/30">'+d.dosage+'</span>':''}`;
+          list.append(li);
+          const opt=document.createElement('option');
+          opt.value=d.id; opt.textContent=d.name; sel.append(opt);
+        });
+      }
+
+      function statusBadge(status){
+        const colors={pending:'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300', delivered:'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300', missed:'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300', cancelled:'bg-slate-200 text-slate-700 dark:bg-slate-600/40 dark:text-slate-300'};
+        return `<span class="px-2 py-0.5 rounded text-[10px] font-medium ${colors[status]||'bg-slate-200'}">${status}</span>`;
+      }
+      async function refreshDeliveries(){
+        const deliveries = await call('/api/deliveries');
+    window.__deliveries = deliveries;
+        const wrap = document.getElementById('deliveries');
+        wrap.innerHTML='';
+        deliveries.forEach(d=>{
+          const row = document.createElement('div');
+          row.className='group border rounded p-2 flex flex-col gap-2 hover:shadow transition bg-white dark:bg-slate-900/40 border-slate-200 dark:border-slate-700';
+          const top = document.createElement('div');
+          top.className='flex flex-wrap items-center justify-between gap-2';
+          top.innerHTML = `<span class='font-medium'>#${d.id} ${statusBadge(d.status)}</span><span class='text-[11px] text-slate-500 dark:text-slate-400'>P${d.patient_id} • D${d.drug_id} • ${d.scheduled_for}</span>`;
+          const actions = document.createElement('div');
+          actions.className='flex flex-wrap';
+          ['pending','delivered','missed','cancelled'].forEach(st=>{
+            const b=document.createElement('button');
+            b.textContent=st;
+              b.className='text-[10px] px-2 py-1 rounded border mr-1 mb-1 '+(d.status===st?'bg-indigo-600 border-indigo-600 text-white':'border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700');
+            b.onclick=async()=>{ await call(`/api/deliveries/${d.id}/status`, {method:'PATCH', body: JSON.stringify({status: st})}); toast('Status updated','success'); refreshDeliveries(); loadStats(); };
+            actions.append(b);
+          });
+          const notes = document.createElement('div');
+          notes.className='hidden text-[11px] text-slate-600 dark:text-slate-400 pl-1';
+          notes.textContent = d.notes? 'Notes: '+d.notes : 'No notes';
+          row.onclick=(e)=>{ if(e.target.tagName==='BUTTON') return; notes.classList.toggle('hidden'); };
+          row.append(top, actions, notes);
+          wrap.append(row);
+        });
+    renderHistory();
+      }
+
+      document.getElementById('patient-form').addEventListener('submit', async e=>{
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const body = Object.fromEntries(fd.entries());
+        body.age = body.age? Number(body.age): null;
+        const btn=document.getElementById('patient-submit'); const sp=document.getElementById('patient-spinner'); const err=document.getElementById('patient-error');
+        err.textContent=''; btn.disabled=true; sp.classList.remove('hidden');
+        try { await call('/api/patients', {method:'POST', body: JSON.stringify(body)}); e.target.reset(); toast('Patient added','success'); refreshPatients(); loadStats(); }
+        catch(ex){ err.textContent=ex.message; toast('Add patient failed','error'); }
+        finally { btn.disabled=false; sp.classList.add('hidden'); }
+      });
+
+      document.getElementById('drug-form').addEventListener('submit', async e=>{
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const body = Object.fromEntries(fd.entries());
+        const btn=document.getElementById('drug-submit'); const sp=document.getElementById('drug-spinner'); const err=document.getElementById('drug-error');
+        err.textContent=''; btn.disabled=true; sp.classList.remove('hidden');
+        try { await call('/api/drugs', {method:'POST', body: JSON.stringify(body)}); e.target.reset(); toast('Drug added','success'); refreshDrugs(); loadStats(); }
+        catch(ex){ err.textContent=ex.message; toast('Add drug failed','error'); }
+        finally { btn.disabled=false; sp.classList.add('hidden'); }
+      });
+
+      document.getElementById('delivery-form').addEventListener('submit', async e=>{
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const body = Object.fromEntries(fd.entries());
+        const btn=document.getElementById('delivery-submit'); const sp=document.getElementById('delivery-spinner'); const err=document.getElementById('delivery-error');
+        err.textContent=''; btn.disabled=true; sp.classList.remove('hidden');
+        try { await call('/api/deliveries', {method:'POST', body: JSON.stringify(body)}); e.target.reset(); toast('Delivery scheduled','success'); refreshDeliveries(); loadStats(); }
+        catch(ex){ err.textContent=ex.message; toast('Schedule failed','error'); }
+        finally { btn.disabled=false; sp.classList.add('hidden'); }
+      });
+
+    async function checkAPI(){
+        const dot = document.getElementById('api-dot');
+        try {
+          await call('/api/health');
+          dot.className='w-2 h-2 rounded-full bg-green-500';
+          document.getElementById('api-indicator').lastChild.textContent='';
+        } catch {
+          dot.className='w-2 h-2 rounded-full bg-red-500 animate-pulse';
+        }
+      }
+
+    function filterPatients(){ const term=(document.getElementById('patient-filter').value||'').toLowerCase(); if(!window.__patients) return []; return window.__patients.filter(p=> p.name.toLowerCase().includes(term) || (p.condition||'').toLowerCase().includes(term)); }
+    function filterDrugs(){ const term=(document.getElementById('drug-filter').value||'').toLowerCase(); if(!window.__drugs) return []; return window.__drugs.filter(d=> d.name.toLowerCase().includes(term) || (d.dosage||'').toLowerCase().includes(term)); }
+    document.getElementById('patient-filter').addEventListener('input', ()=> refreshPatients());
+    document.getElementById('drug-filter').addEventListener('input', ()=> refreshDrugs());
+    const themeBtn=document.getElementById('theme-toggle');
+    function applyTheme(){ const pref = loadPref('theme','light'); if(pref==='dark') document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); themeBtn.textContent = pref==='dark'?'☀️':'🌙'; }
+    themeBtn.onclick=()=>{ const cur = document.documentElement.classList.contains('dark')?'dark':'light'; const next = cur==='dark'?'light':'dark'; savePref('theme',next); applyTheme(); };
+    applyTheme();
+    let countdown = 10; const cdEl=document.getElementById('refresh-countdown'); const auto=document.getElementById('auto-refresh');
+    setInterval(()=>{ if(!auto.checked) { cdEl.textContent=''; return; } countdown--; if(countdown<=0){ countdown=10; refreshDeliveries(); loadStats(); } cdEl.textContent = 'Refresh in '+countdown+'s'; },1000);
+    function renderHistory(){
+      const list = document.getElementById('history-list'); if(!list) return;
+      const deliveries = (window.__deliveries||[]).slice();
+      const status = (document.getElementById('history-status').value||'').trim();
+      const term = (document.getElementById('history-search').value||'').toLowerCase();
+      const filtered = deliveries.filter(d=>{
+        if(status && d.status!==status) return false;
+        if(term){ const hay = `#${d.id} p${d.patient_id} d${d.drug_id} ${d.notes||''}`.toLowerCase(); if(!hay.includes(term)) return false; }
+        return true;
+      });
+      document.getElementById('history-count').textContent = filtered.length+ ' / '+deliveries.length;
+      list.innerHTML = filtered.map(d=>`<div class='py-2 flex flex-col gap-1'>
+        <div class='flex justify-between'><span class='font-medium'>#${d.id}</span><span class='text-[10px] uppercase tracking-wide'>${d.status}</span></div>
+        <div class='text-[10px] text-slate-500 dark:text-slate-400'>P${d.patient_id} • D${d.drug_id} • ${d.scheduled_for}</div>
+        <div class='text-[10px] text-slate-600 dark:text-slate-300'>${d.notes? d.notes: '<em class="not-italic text-slate-400">no notes</em>'}</div>
+      </div>`).join('');
+    }
+    document.getElementById('history-status').addEventListener('change', renderHistory);
+    document.getElementById('history-search').addEventListener('input', renderHistory);
+    document.getElementById('history-refresh').addEventListener('click', (e)=>{ e.preventDefault(); refreshDeliveries(); });
+
+    // Tabs
+    const tabButtons = document.querySelectorAll('#main-nav .tab-btn');
+    function activateTab(name){
+      document.querySelectorAll('[data-view]').forEach(v=>{
+        const show = v.getAttribute('data-view')===name;
+        v.classList.toggle('hidden', !show);
+      });
+      tabButtons.forEach(b=>{
+        const active = b.getAttribute('data-tab')===name;
+        b.classList.toggle('bg-indigo-600', active);
+        b.classList.toggle('text-white', active);
+        b.classList.toggle('shadow', active);
+        if(!active){
+          b.classList.add('border','border-slate-300','dark:border-slate-600');
+        } else {
+          b.classList.remove('border','border-slate-300','dark:border-slate-600');
+        }
+      });
+      savePref('activeTab', name);
+    }
+    tabButtons.forEach(b=> b.addEventListener('click', ()=> activateTab(b.getAttribute('data-tab'))));
+    activateTab(loadPref('activeTab','dashboard'));
+    async function boot(){
+        await checkAPI();
+        try {
+          await Promise.all([refreshPatients(), refreshDrugs()]);
+          await refreshDeliveries();
+          await loadStats();
+        } catch(err){
+          alert('Failed to load data: '+ err.message);
+        }
+      }
+      boot();
+      setInterval(checkAPI, 5000);
+    </script>
   </body>
+  </html>
+      </div>
+    </section>
+  </main>
+
+  <template id="stat-card-template">
+    <div class="card shadow-soft flex flex-col" aria-label="Statistic">
+      <div class="card-header flex items-center justify-between py-2">
+        <h3 class="text-xs font-medium tracking-wide stat-title">Loading…</h3>
+        <span class="icon text-xl" aria-hidden="true"></span>
+      </div>
+      <div class="card-content pt-2 pb-4">
+        <div class="value text-2xl font-bold" aria-live="polite"></div>
+        <p class="delta text-[11px] mt-1 text-slate-500"></p>
+      </div>
+    </div>
+  </template>
+
+  <template id="activity-item-template">
+    <div class="flex items-start gap-3">
+      <div class="icon w-5 h-5 mt-0.5"></div>
+      <div class="flex-1 space-y-1">
+        <p class="text-sm font-medium leading-snug action"></p>
+        <p class="text-[11px] text-slate-500 time"></p>
+      </div>
+    </div>
+  </template>
+
+  <template id="delivery-record-template">
+    <div class="card p-4 shadow-sm">
+      <div class="flex flex-wrap gap-4 justify-between items-start">
+        <div class="space-y-1 text-sm info"></div>
+        <div class="flex items-center gap-2">
+          <span class="badge status-badge"></span>
+          <select class="status-select text-xs border rounded-md px-2 py-1 bg-white focus-ring">
+            <option value="pending">Pending</option>
+            <option value="delivered">Delivered</option>
+            <option value="missed">Missed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script>
+    // Tab Navigation Setup
+    const tabs = [
+      { id: 'dashboard', label: 'Dashboard' },
+      { id: 'patients', label: 'Patients' },
+      { id: 'drugs', label: 'Drugs' },
+      { id: 'deliveries', label: 'Deliveries' },
+      { id: 'history', label: 'History' }
+    ];
+    const navTabsContainer = document.getElementById('nav-tabs');
+    tabs.forEach(t => {
+      const btn = document.createElement('button');
+      btn.id = 'tab-' + t.id;
+      btn.type = 'button';
+      btn.role = 'tab';
+      btn.setAttribute('aria-controls', 'view-' + t.id);
+      btn.className = 'px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:bg-[hsl(var(--muted))] data-[active=true]:bg-[hsl(var(--primary))] data-[active=true]:text-white';
+      btn.textContent = t.label;
+      btn.addEventListener('click', () => setActiveTab(t.id));
+      navTabsContainer.appendChild(btn);
+    });
+    function setActiveTab(id) {
+      tabs.forEach(t => {
+        const btn = document.getElementById('tab-' + t.id);
+        const panel = document.getElementById('view-' + t.id);
+        if (!btn || !panel) return;
+        const active = t.id === id;
+        btn.dataset.active = active ? 'true' : 'false';
+        panel.classList.toggle('hidden', !active);
+      });
+    }
+    setActiveTab('dashboard');
+    // Mock data (converted from React components)
+    let stats = {
+      totalPatients: 0,
+      totalDrugs: 0,
+      pendingDeliveries: 0,
+      completedToday: 0,
+      missedDeliveries: 0,
+      upcomingDeliveries: 0,
+    };
+
+    const recentActivity = [
+      { id: 1, action: "Delivered Amoxicillin to Alice Johnson", time: "2 hours ago", status: "delivered" },
+      { id: 2, action: "Scheduled Ibuprofen for Bob Smith", time: "4 hours ago", status: "pending" },
+      { id: 3, action: "Missed delivery for Sarah Wilson", time: "6 hours ago", status: "missed" },
+      { id: 4, action: "Delivered Metformin to John Doe", time: "8 hours ago", status: "delivered" },
+    ];
+
+  let patients = [];
+
+  let drugs = [];
+
+    const classForStatus = (s) => ({
+      delivered: 'bg-medical-success',
+      pending: 'bg-medical-pending',
+      missed: 'bg-destructive',
+      cancelled: 'bg-muted'
+    })[s] || 'bg-muted';
+
+  function renderStats() {
+      const container = document.getElementById('stats-cards');
+      const tpl = document.getElementById('stat-card-template');
+      const defs = [
+        { label: 'Total Patients', value: stats.totalPatients, delta: '+2 from last week', icon: '👥' },
+        { label: 'Drug Catalog', value: stats.totalDrugs, delta: '+1 from last week', icon: '💊' },
+        { label: 'Pending Deliveries', value: stats.pendingDeliveries, delta: 'Due today & upcoming', icon: '⏳' },
+        { label: 'Completed Today', value: stats.completedToday, delta: '+20% from yesterday', icon: '✅' },
+      ];
+      defs.forEach(d => {
+    const node = tpl.content.cloneNode(true);
+    node.querySelector('.stat-title').textContent = d.label;
+        node.querySelector('.value').textContent = d.value;
+        node.querySelector('.delta').textContent = d.delta;
+        node.querySelector('.icon').textContent = d.icon;
+        container.appendChild(node);
+      });
+    }
+
+    function renderActivity() {
+      const list = document.getElementById('recent-activity-list');
+      const tpl = document.getElementById('activity-item-template');
+      list.innerHTML = '<div class="space-y-4"></div>';
+      const inner = list.firstChild;
+      recentActivity.forEach(a => {
+        const node = tpl.content.cloneNode(true);
+        node.querySelector('.action').textContent = a.action;
+        node.querySelector('.time').textContent = a.time;
+        const icon = node.querySelector('.icon');
+        let iconChar;
+        switch (a.status) {
+          case 'delivered': iconChar = '✔️'; break;
+          case 'pending': iconChar = '⏳'; break;
+          case 'missed': iconChar = '⚠️'; break;
+          default: iconChar = 'ℹ️';
+        }
+        icon.textContent = iconChar;
+        inner.appendChild(node);
+      });
+    }
+
+    function renderQuickStats() {
+      const container = document.getElementById('quick-stats');
+      container.innerHTML = '';
+      const rows = [
+        ['Delivery Success Rate', '94%', 'text-medical-success'],
+        ['Missed Deliveries', stats.missedDeliveries, 'text-red-600'],
+        ['Upcoming This Week', stats.upcomingDeliveries, 'text-blue-600'],
+        ['Average Daily Deliveries', '8.5', '']
+      ];
+      rows.forEach(r => {
+        const div = document.createElement('div');
+        div.className = 'flex items-center justify-between';
+        div.innerHTML = `<span>${r[0]}</span><span class="font-semibold ${r[2]}">${r[1]}</span>`;
+        container.appendChild(div);
+      });
+    }
+
+  <!-- Removed duplicate early setupPatients/loadDeliveries definitions -->
+
+    async function fetchPatients() {
+      const res = await fetch(`${API_BASE}/api/patients`);
+      patients = await res.json();
+    }
+
+    async function fetchDrugs() {
+      const res = await fetch(`${API_BASE}/api/drugs`);
+      drugs = await res.json();
+    }
+
+    async function fetchStats() {
+      const res = await fetch(`${API_BASE}/api/stats`);
+      stats = await res.json();
+    }
+
+    async function initData() {
+      try {
+        await Promise.all([fetchPatients(), fetchDrugs(), fetchStats()]);
+      } catch (e) {
+        console.warn('Failed to load from backend, using empty data', e);
+      }
+      document.getElementById('stats-cards').innerHTML='';
+      renderStats();
+      renderQuickStats();
+      setupPatients();
+      populateDeliveryFormSelects();
+    }
+    // initialize selects for delivery form with existing arrays when forms used
+    function populateDeliveryFormSelects() {
+      const pSel = document.getElementById('delivery-patient');
+      const dSel = document.getElementById('delivery-drug');
+      if (pSel) pSel.innerHTML = '<option value="" disabled selected>Select patient</option>' + patients.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+      if (dSel) dSel.innerHTML = '<option value="" disabled selected>Select drug</option>' + drugs.map(d=>`<option value="${d.id}">${d.name} - ${d.dosage}</option>`).join('');
+    }
+    // local stores
+  const patientStore = []; // will mirror backend after add
+  const drugStore = [];
+  const deliveriesStore = []; // local cache after creation
+
+    // Patient form handler
+    document.getElementById('patient-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const name = document.getElementById('patient-name').value.trim();
+      const age = parseInt(document.getElementById('patient-age').value,10);
+      const contact = document.getElementById('patient-contact').value.trim();
+      if(!name){ alert('Name required'); return; }
+      if(Number.isNaN(age)){ alert('Age must be a number'); return; }
+      try {
+        const res = await fetch(`${API_BASE}/api/patients`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name, age, contact: contact || null})});
+        if(!res.ok){
+          let detail = '';
+          try { detail = await res.text(); } catch(_) {}
+          throw new Error(`HTTP ${res.status} ${res.statusText}\n${detail}`);
+        }
+        const {id} = await res.json();
+        patientStore.push({ id, name, age, contact });
+        alert('Patient Added: ' + name);
+        e.target.reset();
+        await fetchPatients();
+        setupPatients();
+        populateDeliveryFormSelects();
+      } catch(err){
+        console.error('Add patient failed', err);
+        alert(`Unable to add patient.\n${err.message}`);
+      }
+    });
+
+    // Drug form handler
+    document.getElementById('drug-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const name = document.getElementById('drug-name').value.trim();
+      const dosage = document.getElementById('drug-dosage').value.trim();
+      const frequency = document.getElementById('drug-frequency').value.trim();
+      try {
+        const res = await fetch(`${API_BASE}/api/drugs`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name, dosage, frequency})});
+        if(!res.ok){
+          const txt = await res.text();
+            throw new Error(`HTTP ${res.status} ${res.statusText}: ${txt}`);
+        }
+        const {id} = await res.json();
+        drugStore.push({ id, name, dosage, frequency });
+        alert('Drug Added: ' + name);
+        e.target.reset();
+        await fetchDrugs();
+        populateDeliveryFormSelects();
+      } catch(err){ console.error('Add drug failed', err); alert('Unable to add drug (backend). Check console.'); }
+    });
+
+    // Delivery form handler
+    document.getElementById('delivery-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const patientId = parseInt(document.getElementById('delivery-patient').value,10);
+      const drugId = parseInt(document.getElementById('delivery-drug').value,10);
+      const deliveryDate = document.getElementById('delivery-date').value;
+      const status = document.getElementById('delivery-status-select').value;
+      try {
+        const res = await fetch(`${API_BASE}/api/deliveries`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({patient_id: patientId, drug_id: drugId, delivery_date: deliveryDate, status})});
+        if(!res.ok){
+          const txt = await res.text();
+          throw new Error(`HTTP ${res.status} ${res.statusText}: ${txt}`);
+        }
+        const {id} = await res.json();
+        const patient = (patients.find(p=>p.id===patientId) || {});
+        const drug = (drugs.find(d=>d.id===drugId) || {});
+        deliveriesStore.push({ id, patient_id: patientId, patient_name: patient.name || '', drug_id: drugId, drug_name: drug.name || '', dosage: drug.dosage || '', frequency: drug.frequency || '', delivery_date: deliveryDate, status });
+        alert('Delivery Recorded for ' + (patient.name || 'Patient'));
+        e.target.reset();
+      } catch(err){ console.error('Record delivery failed', err); alert('Unable to record delivery. Check console.'); }
+    });
+
+    // Hook into patient selection for history view using local store
+    function setupPatients() {
+      const select = document.getElementById('patient-select');
+      if (!select) return;
+      select.innerHTML = '<option value="" disabled selected>Select a patient</option>' +
+        patientStore.map(p => `<option value="${p.id}">${p.name} (Age: ${p.age})</option>`).join('');
+      select.onchange = () => loadDeliveries(parseInt(select.value,10));
+    }
+
+    async function loadDeliveries(pid) {
+      const statusEl = document.getElementById('delivery-status');
+      const container = document.getElementById('delivery-records');
+      container.innerHTML = '';
+      statusEl.textContent = 'Loading delivery history...';
+      try {
+  const res = await fetch(`${API_BASE}/api/deliveries/patient/${pid}`);
+        const data = res.ok ? await res.json() : [];
+        statusEl.textContent = data.length ? '' : 'No delivery records found for this patient.';
+        const tpl = document.getElementById('delivery-record-template');
+        data.forEach(rec => {
+          const node = tpl.content.cloneNode(true);
+          node.querySelector('.info').innerHTML = `
+            <div class="font-medium">${rec.drug_name}</div>
+            <div class="text-slate-500 text-xs">${new Date(rec.delivery_date).toLocaleDateString()} • Dosage: ${rec.dosage} • ${rec.frequency}</div>`;
+          const badge = node.querySelector('.status-badge');
+          badge.textContent = rec.status;
+          badge.classList.add(classForStatus(rec.status));
+          const select = node.querySelector('.status-select');
+          select.value = rec.status;
+          select.addEventListener('change', async () => {
+            const newStatus = select.value;
+            const patch = await fetch(`${API_BASE}/api/deliveries/${rec.id}/status`, {method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status:newStatus})});
+            if(patch.ok){
+              rec.status = newStatus;
+              badge.textContent = rec.status;
+              badge.className = 'badge ' + classForStatus(rec.status);
+            } else {
+              alert('Failed to update status');
+              select.value = rec.status;
+            }
+          });
+          container.appendChild(node);
+        });
+      } catch(err) {
+        statusEl.textContent = 'Error loading history.';
+      }
+    }
+
+  initData();
+  renderActivity(); // static sample activity for now
+  </script>
+</body>
 </html>
