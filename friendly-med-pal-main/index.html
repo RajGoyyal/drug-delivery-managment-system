@@ -129,6 +129,8 @@
           <form id="drug-form" class="grid gap-3 text-sm">
             <input name="name" required placeholder="Name" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
             <input name="dosage" placeholder="Dosage" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
+            <input name="stock" type="number" min="0" placeholder="Stock" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
+            <input name="reorder_level" type="number" min="0" placeholder="Reorder Level" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
             <div class="flex items-center gap-3">
               <button class="bg-indigo-600 hover:bg-indigo-500 text-white rounded px-4 py-2 font-medium disabled:opacity-50 flex items-center gap-2" id="drug-submit"><span>Add Drug</span><span class="hidden spinner" id="drug-spinner"></span></button>
               <p class="text-xs text-red-500" id="drug-error"></p>
@@ -296,7 +298,8 @@
                 <th data-sort="id" class="py-2 px-3 font-medium cursor-pointer">ID</th>
                 <th data-sort="name" class="py-2 px-3 font-medium cursor-pointer">Name</th>
                 <th data-sort="dosage" class="py-2 px-3 font-medium cursor-pointer">Dosage</th>
-                <th data-sort="frequency" class="py-2 px-3 font-medium cursor-pointer">Frequency</th>
+                <th data-sort="stock" class="py-2 px-3 font-medium cursor-pointer">Stock</th>
+                <th data-sort="reorder_level" class="py-2 px-3 font-medium cursor-pointer">Reorder</th>
               </tr>
             </thead>
             <tbody id="all-drugs-body" class="divide-y divide-slate-800"></tbody>
@@ -610,26 +613,24 @@
         filterDrugs().forEach(d=>{
           const li=document.createElement('li');
             li.className='py-1 flex items-center justify-between gap-2';
-            li.innerHTML = `<span class='truncate'>${d.id}. <strong>${escapeHTML(d.name)}</strong>${d.dosage? ' <span class="text-[10px] px-1 py-0.5 rounded bg-indigo-100 dark:bg-indigo-600/30">'+escapeHTML(d.dosage)+'</span>':''}</span>`;
+            li.innerHTML = `<span class='truncate'>${d.id}. <strong>${escapeHTML(d.name)}</strong>${d.dosage? ' <span class="text-[10px] px-1 py-0.5 rounded bg-indigo-100 dark:bg-indigo-600/30">'+escapeHTML(d.dosage)+'</span>':''}
+              <span class="ml-1 text-[10px] px-1 py-0.5 rounded ${(d.stock??0) <= (d.reorder_level??0) ? 'bg-red-600/30 text-red-300' : 'bg-slate-600/40 text-slate-300'}">stk:${d.stock??0}</span>
+              <span class="ml-1 text-[10px] px-1 py-0.5 rounded bg-slate-700/60 text-slate-300">rl:${d.reorder_level??0}</span></span>`;
           const actions=document.createElement('div'); actions.className='flex gap-1';
+          const adjust=document.createElement('button'); adjust.className='px-2 py-0.5 text-[10px] rounded bg-indigo-600/60 hover:bg-indigo-600'; adjust.textContent='Adj';
+          adjust.onclick=async()=>{ const deltaStr=prompt('Adjust stock by (e.g. 25 or -10)'); if(deltaStr===null){ return; } const delta=parseInt(deltaStr,10); if(isNaN(delta)){ alert('Invalid number'); return; } const reason=prompt('Reason','manual'); try { await call('/api/inventory/adjust',{method:'POST', body: JSON.stringify({drug_id:d.id, delta, reason})}); toast('Inventory adjusted','success'); refreshDrugs(); loadStats(); renderAlerts(); } catch(e){ console.error('Adjust failed', e); toast('Adjust failed','error'); } };
           const edit=document.createElement('button'); edit.className='px-2 py-0.5 text-[10px] rounded bg-slate-700 hover:bg-slate-600'; edit.textContent='Edit';
           edit.onclick=async()=>{
-            const name=prompt('Name', d.name);
-            if(name===null){ return; }
-            const dosage=prompt('Dosage', d.dosage||'');
-            if(dosage===null){ return; }
-            try {
-              await call(`/api/drugs/${d.id}`, {method:'PATCH', body: JSON.stringify({name, dosage})});
-              toast('Drug updated','success');
-              refreshDrugs();
-            } catch(e){
-              console.error('Drug update failed', e);
-              toast('Update failed','error');
-            }
+            const name=prompt('Name', d.name); if(name===null) return;
+            const dosage=prompt('Dosage', d.dosage||''); if(dosage===null) return;
+            const stockStr=prompt('Stock', d.stock??'0'); if(stockStr===null) return;
+            const reorderStr=prompt('Reorder level', d.reorder_level??'0'); if(reorderStr===null) return;
+            try { await call(`/api/drugs/${d.id}`, {method:'PATCH', body: JSON.stringify({name, dosage, stock:Number(stockStr)||0, reorder_level:Number(reorderStr)||0})}); toast('Drug updated','success'); refreshDrugs(); renderAlerts(); }
+            catch(e){ console.error('Drug update failed', e); toast('Update failed','error'); }
           };
           const del=document.createElement('button'); del.className='px-2 py-0.5 text-[10px] rounded bg-red-600/80 hover:bg-red-600'; del.textContent='Del';
           del.onclick=async()=>{ if(!confirmAction('Delete drug and related deliveries?')) { return; } try { await call(`/api/drugs/${d.id}`, {method:'DELETE'}); toast('Drug deleted','success'); refreshDrugs(); refreshDeliveries(); loadStats(); } catch(e){ console.error('Drug delete failed', e); toast('Delete failed','error'); } };
-          actions.append(edit, del); li.append(actions); list.append(li);
+          actions.append(adjust, edit, del); li.append(actions); list.append(li);
           const opt=document.createElement('option'); opt.value=d.id; opt.textContent=d.name; sel.append(opt);
         });
       }
