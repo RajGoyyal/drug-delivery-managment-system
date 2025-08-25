@@ -74,6 +74,9 @@
         <button data-tab="analytics" class="tab-btn pill-btn px-4 py-1.5 rounded-full text-slate-300 hover:text-white">Analytics</button>
         <button data-tab="calendar" class="tab-btn pill-btn px-4 py-1.5 rounded-full text-slate-300 hover:text-white">Calendar</button>
         <button data-tab="alerts" class="tab-btn pill-btn px-4 py-1.5 rounded-full text-slate-300 hover:text-white">Alerts</button>
+  <button data-tab="all-patients" class="tab-btn pill-btn px-4 py-1.5 rounded-full text-slate-300 hover:text-white">All Patients</button>
+  <button data-tab="all-drugs" class="tab-btn pill-btn px-4 py-1.5 rounded-full text-slate-300 hover:text-white">All Drugs</button>
+  <button data-tab="all-deliveries" class="tab-btn pill-btn px-4 py-1.5 rounded-full text-slate-300 hover:text-white">All Deliveries</button>
         <button data-tab="settings" class="tab-btn pill-btn px-4 py-1.5 rounded-full text-slate-300 hover:text-white">Settings</button>
       </nav>
 
@@ -235,6 +238,84 @@
           </div>
         </form>
         <div class="text-[11px] text-slate-500">Shortcuts: Alt+1..8 switch tabs, / focus search, Ctrl+Shift+S seed, Ctrl+Shift+E export all.</div>
+      </section>
+
+      <!-- All Patients Overview -->
+      <section data-view="all-patients" class="glass rounded-xl p-6 space-y-4 hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+          <h2 class="text-lg font-semibold heading-gradient">All Patients</h2>
+          <div class="flex items-center gap-2 ml-auto">
+            <input id="all-patients-search" placeholder="Search" class="bg-slate-900/40 border border-slate-600 rounded px-2 py-1 text-xs placeholder-slate-500" />
+            <button id="export-all-patients" class="text-[10px] px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Export</button>
+          </div>
+        </div>
+        <div class="overflow-auto soft-scroll max-h-[60vh] rounded-lg border border-slate-700/70">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-800/60 sticky top-0 backdrop-blur">
+              <tr class="text-slate-400">
+                <th class="py-2 px-3 font-medium">ID</th>
+                <th class="py-2 px-3 font-medium">Name</th>
+                <th class="py-2 px-3 font-medium">Age</th>
+                <th class="py-2 px-3 font-medium">Condition</th>
+                <th class="py-2 px-3 font-medium">Contact</th>
+              </tr>
+            </thead>
+            <tbody id="all-patients-body" class="divide-y divide-slate-800"></tbody>
+          </table>
+        </div>
+        <div id="all-patients-empty" class="text-[11px] text-slate-500"></div>
+      </section>
+
+      <!-- All Drugs Overview -->
+      <section data-view="all-drugs" class="glass rounded-xl p-6 space-y-4 hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+          <h2 class="text-lg font-semibold heading-gradient">All Drugs</h2>
+          <div class="flex items-center gap-2 ml-auto">
+            <input id="all-drugs-search" placeholder="Search" class="bg-slate-900/40 border border-slate-600 rounded px-2 py-1 text-xs placeholder-slate-500" />
+            <button id="export-all-drugs" class="text-[10px] px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Export</button>
+          </div>
+        </div>
+        <div class="overflow-auto soft-scroll max-h-[60vh] rounded-lg border border-slate-700/70">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-800/60 sticky top-0 backdrop-blur">
+              <tr class="text-slate-400">
+                <th class="py-2 px-3 font-medium">ID</th>
+                <th class="py-2 px-3 font-medium">Name</th>
+                <th class="py-2 px-3 font-medium">Dosage</th>
+                <th class="py-2 px-3 font-medium">Frequency</th>
+              </tr>
+            </thead>
+            <tbody id="all-drugs-body" class="divide-y divide-slate-800"></tbody>
+          </table>
+        </div>
+        <div id="all-drugs-empty" class="text-[11px] text-slate-500"></div>
+      </section>
+
+      <!-- All Deliveries Overview -->
+      <section data-view="all-deliveries" class="glass rounded-xl p-6 space-y-4 hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+          <h2 class="text-lg font-semibold heading-gradient">All Deliveries</h2>
+          <div class="flex items-center gap-2 ml-auto">
+            <input id="all-deliveries-search" placeholder="Search (id / status / notes)" class="bg-slate-900/40 border border-slate-600 rounded px-2 py-1 text-xs placeholder-slate-500" />
+            <button id="export-all-deliveries" class="text-[10px] px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Export</button>
+          </div>
+        </div>
+        <div class="overflow-auto soft-scroll max-h-[60vh] rounded-lg border border-slate-700/70">
+          <table class="w-full text-left text-[11px]">
+            <thead class="bg-slate-800/60 sticky top-0 backdrop-blur">
+              <tr class="text-slate-400">
+                <th class="py-2 px-3 font-medium">ID</th>
+                <th class="py-2 px-3 font-medium">Patient</th>
+                <th class="py-2 px-3 font-medium">Drug</th>
+                <th class="py-2 px-3 font-medium">Scheduled</th>
+                <th class="py-2 px-3 font-medium">Status</th>
+                <th class="py-2 px-3 font-medium">Notes</th>
+              </tr>
+            </thead>
+            <tbody id="all-deliveries-body" class="divide-y divide-slate-800"></tbody>
+          </table>
+        </div>
+        <div id="all-deliveries-empty" class="text-[11px] text-slate-500"></div>
       </section>
 
       <footer class="text-center text-xs text-slate-400 py-8">&copy; 2025 Friendly Med Pal 2.0</footer>
@@ -680,6 +761,9 @@
           ind.style.transform=`translateX(${rect.left-parentRect.left}px)`;
         }
       } catch{}
+  if(name==='all-patients') renderAllPatients();
+  else if(name==='all-drugs') renderAllDrugs();
+  else if(name==='all-deliveries') renderAllDeliveries();
     }
     tabButtons.forEach(b=> b.addEventListener('click', ()=> activateTab(b.getAttribute('data-tab'))));
     activateTab(loadPref('activeTab','dashboard'));
@@ -694,6 +778,9 @@
           initCalendar();
           renderCalendar();
           renderAlerts();
+          renderAllPatients();
+          renderAllDrugs();
+          renderAllDeliveries();
         } catch(err){
           console.error('Initial boot failed', err);
           toast('Initial load failed','error');
@@ -761,6 +848,58 @@
       }
       document.getElementById('pm-close').addEventListener('click', ()=>{ const m=document.getElementById('patient-modal'); m.classList.add('hidden'); m.classList.remove('flex'); });
       document.getElementById('patient-modal').addEventListener('click', e=>{ if(e.target.id==='patient-modal'){ document.getElementById('pm-close').click(); }});
+
+      // --- Overview tables rendering ---
+      function renderAllPatients(){
+        const body=document.getElementById('all-patients-body'); if(!body) return;
+        const empty=document.getElementById('all-patients-empty');
+        const term=(document.getElementById('all-patients-search').value||'').toLowerCase();
+        const rows=(window.__patients||[]).filter(p=> !term || p.name.toLowerCase().includes(term) || (p.condition||'').toLowerCase().includes(term) || String(p.id)===term);
+        body.innerHTML = rows.map(p=>`<tr class='hover:bg-slate-700/40 transition'>
+          <td class='px-3 py-2 font-medium text-slate-300'>${p.id}</td>
+          <td class='px-3 py-2'>${escapeHTML(p.name)}</td>
+          <td class='px-3 py-2 text-slate-400'>${p.age??'—'}</td>
+          <td class='px-3 py-2 text-slate-400'>${p.condition? escapeHTML(p.condition):'—'}</td>
+          <td class='px-3 py-2 text-slate-400'>${p.contact? escapeHTML(p.contact):'—'}</td>
+        </tr>`).join('');
+        empty.textContent = rows.length? '' : 'No patients found';
+      }
+      function renderAllDrugs(){
+        const body=document.getElementById('all-drugs-body'); if(!body) return;
+        const empty=document.getElementById('all-drugs-empty');
+        const term=(document.getElementById('all-drugs-search').value||'').toLowerCase();
+        const rows=(window.__drugs||[]).filter(d=> !term || d.name.toLowerCase().includes(term) || (d.dosage||'').toLowerCase().includes(term) || String(d.id)===term);
+        body.innerHTML = rows.map(d=>`<tr class='hover:bg-slate-700/40 transition'>
+          <td class='px-3 py-2 font-medium text-slate-300'>${d.id}</td>
+          <td class='px-3 py-2'>${escapeHTML(d.name)}</td>
+          <td class='px-3 py-2 text-slate-400'>${d.dosage? escapeHTML(d.dosage):'—'}</td>
+          <td class='px-3 py-2 text-slate-400'>${d.frequency? escapeHTML(d.frequency):'—'}</td>
+        </tr>`).join('');
+        empty.textContent = rows.length? '' : 'No drugs found';
+      }
+      function renderAllDeliveries(){
+        const body=document.getElementById('all-deliveries-body'); if(!body) return;
+        const empty=document.getElementById('all-deliveries-empty');
+        const term=(document.getElementById('all-deliveries-search').value||'').toLowerCase();
+  const rows=(window.__deliveries||[]).filter(d=>{ if(!term){ return true; } return String(d.id)===term || d.status.toLowerCase().includes(term) || (d.notes||'').toLowerCase().includes(term); });
+        body.innerHTML = rows.map(d=>`<tr class='hover:bg-slate-700/40 transition'>
+          <td class='px-3 py-2 font-medium text-slate-300'>${d.id}</td>
+          <td class='px-3 py-2 text-slate-400'>${d.patient_id}</td>
+          <td class='px-3 py-2 text-slate-400'>${d.drug_id}</td>
+          <td class='px-3 py-2 text-slate-400 whitespace-nowrap'>${d.scheduled_for}</td>
+          <td class='px-3 py-2'>${statusBadge(d.status)}</td>
+          <td class='px-3 py-2 text-slate-400 max-w-[200px] truncate' title='${d.notes? escapeHTML(d.notes):''}'>${d.notes? escapeHTML(d.notes):'—'}</td>
+        </tr>`).join('');
+        empty.textContent = rows.length? '' : 'No deliveries found';
+      }
+      document.addEventListener('input', e=>{
+        if(e.target.id==='all-patients-search') renderAllPatients();
+        else if(e.target.id==='all-drugs-search') renderAllDrugs();
+        else if(e.target.id==='all-deliveries-search') renderAllDeliveries();
+      });
+      document.getElementById('export-all-patients').addEventListener('click', ()=>{ if(!window.__patients){ toast('No data','error'); return; } downloadFile('patients.csv', toCSV(window.__patients)); });
+      document.getElementById('export-all-drugs').addEventListener('click', ()=>{ if(!window.__drugs){ toast('No data','error'); return; } downloadFile('drugs.csv', toCSV(window.__drugs)); });
+      document.getElementById('export-all-deliveries').addEventListener('click', ()=>{ if(!window.__deliveries){ toast('No data','error'); return; } downloadFile('deliveries.csv', toCSV(window.__deliveries)); });
 
       // Analytics rendering
       function aggregateDeliveriesByDay(days=14){
