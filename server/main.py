@@ -112,14 +112,14 @@ def stats():
         drug_count = cur.execute("SELECT COUNT(*) c FROM drugs").fetchone()[0]
         delivery_count = cur.execute("SELECT COUNT(*) c FROM deliveries").fetchone()[0]
         status_rows = cur.execute("SELECT status, COUNT(*) c FROM deliveries GROUP BY status").fetchall()
-    low_stock = cur.execute("SELECT COUNT(*) FROM drugs WHERE stock <= reorder_level").fetchone()[0]
+        low_stock = cur.execute("SELECT COUNT(*) FROM drugs WHERE stock <= reorder_level").fetchone()[0]
     status_map = {r[0]: r[1] for r in status_rows}
     return jsonify({
         "patients": patient_count,
         "drugs": drug_count,
         "deliveries": delivery_count,
         "status_breakdown": status_map,
-    "low_stock_drugs": low_stock,
+        "low_stock_drugs": low_stock,
     })
 
 
@@ -201,7 +201,7 @@ def create_drug():
 @app.get("/api/drugs")
 def list_drugs():
     with get_conn() as conn:
-    rows = conn.execute("SELECT * FROM drugs ORDER BY id DESC").fetchall()
+        rows = conn.execute("SELECT * FROM drugs ORDER BY id DESC").fetchall()
     return jsonify([row_to_dict(r) for r in rows])
 
 
