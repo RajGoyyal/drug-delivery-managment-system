@@ -75,6 +75,7 @@
         <button data-tab="drugs" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Add Drug</button>
         <button data-tab="all-deliveries" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">All Deliveries <span class="text-[10px] ml-1 opacity-60" data-count="deliveries"></span></button>
         <button data-tab="deliveries" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Schedule</button>
+  <button data-tab="inventory" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Inventory</button>
         <button data-tab="analytics" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Analytics</button>
         <button data-tab="calendar" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Calendar</button>
         <button data-tab="alerts" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Alerts</button>
@@ -147,6 +148,7 @@
   <select name="patient_id" required class="border border-slate-600 rounded px-3 py-2 bg-slate-700 text-slate-100"></select>
   <select name="drug_id" required class="border border-slate-600 rounded px-3 py-2 bg-slate-700 text-slate-100"></select>
   <input type="datetime-local" name="scheduled_for" required class="border border-slate-600 rounded px-3 py-2 md:col-span-2 bg-slate-700 text-slate-100" />
+  <input type="number" min="1" name="quantity" value="1" required placeholder="Qty" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 text-slate-100" />
   <input name="notes" placeholder="Notes" class="border border-slate-600 rounded px-3 py-2 md:col-span-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
           <div class="flex items-center gap-3 md:col-span-2">
             <button class="bg-indigo-600 hover:bg-indigo-500 text-white rounded px-4 py-2 font-medium flex items-center gap-2 disabled:opacity-50" id="delivery-submit"><span>Schedule Delivery</span><span class="hidden spinner" id="delivery-spinner"></span></button>
@@ -1012,6 +1014,7 @@
           return `<tr class='hover:bg-slate-700/40 transition'>
             <td class='px-2 py-2'><input type='checkbox' data-row-select='${d.id}' class='accent-indigo-500' ${sel?'checked':''} /></td>
             <td class='px-3 py-2 font-medium text-slate-300'>${d.id}</td>
+            <td class='px-3 py-2 text-slate-400'>${d.quantity||1}</td>
             <td class='px-3 py-2 text-slate-400 ${st.visibleCols.patient?'':'hidden'}'>${d.patient_id}</td>
             <td class='px-3 py-2 text-slate-400 ${st.visibleCols.drug?'':'hidden'}'>${d.drug_id}</td>
             <td class='px-3 py-2 text-slate-400 whitespace-nowrap ${st.visibleCols.scheduled_for?'':'hidden'}'>${d.scheduled_for}</td>
