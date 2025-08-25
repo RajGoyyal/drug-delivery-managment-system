@@ -150,8 +150,24 @@
   <h2 class="font-semibold flex items-center gap-4">Deliveries <span class="text-xs font-normal text-slate-400" id="refresh-countdown"></span><button id="refresh-deliveries" class="text-[10px] px-2 py-1 rounded border border-slate-600 bg-slate-700 hover:bg-slate-600">Refresh</button><label class="ml-auto inline-flex items-center gap-1 text-xs cursor-pointer select-none"><input type="checkbox" id="auto-refresh" class="accent-indigo-500" checked /> Auto</label><button id="toggle-overdue" class="text-[10px] px-2 py-1 rounded border border-slate-600 bg-slate-700 hover:bg-slate-600" title="Toggle overdue pending deliveries">Overdue</button><button id="export-deliveries" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Export</button></h2>
     <div id="delivery-status-filters" class="flex flex-wrap gap-2 text-[11px]"></div>
         <form id="delivery-form" class="grid gap-3 md:grid-cols-2 text-sm">
-  <select name="patient_id" required class="border border-slate-600 rounded px-3 py-2 bg-slate-700 text-slate-100"></select>
-  <select name="drug_id" required class="border border-slate-600 rounded px-3 py-2 bg-slate-700 text-slate-100"></select>
+  <div class="relative" id="patient-picker-wrap">
+    <input type="hidden" name="patient_id" />
+    <button type="button" id="patient-picker-btn" class="w-full border border-slate-600 rounded px-3 py-2 bg-slate-700 text-left text-slate-300 text-xs flex items-center justify-between">Select patient<span id="patient-picker-current" class="truncate ml-2 font-medium"></span><span class="text-[10px] text-slate-400 ml-auto">▾</span></button>
+    <div id="patient-picker-panel" class="hidden absolute z-30 mt-1 w-72 max-h-64 overflow-auto bg-slate-800 border border-slate-700 rounded shadow-lg p-2 space-y-2">
+      <input id="patient-picker-search" placeholder="Search patients" class="w-full px-2 py-1 rounded bg-slate-700 border border-slate-600 text-[11px]" />
+      <ul id="patient-picker-list" class="text-[11px] space-y-1"></ul>
+      <div id="patient-picker-empty" class="text-[10px] text-slate-500 hidden">No matches</div>
+    </div>
+  </div>
+  <div class="relative" id="drug-picker-wrap">
+    <input type="hidden" name="drug_id" />
+    <button type="button" id="drug-picker-btn" class="w-full border border-slate-600 rounded px-3 py-2 bg-slate-700 text-left text-slate-300 text-xs flex items-center justify-between">Select drug<span id="drug-picker-current" class="truncate ml-2 font-medium"></span><span class="text-[10px] text-slate-400 ml-auto">▾</span></button>
+    <div id="drug-picker-panel" class="hidden absolute z-30 mt-1 w-72 max-h-64 overflow-auto bg-slate-800 border border-slate-700 rounded shadow-lg p-2 space-y-2">
+      <input id="drug-picker-search" placeholder="Search drugs" class="w-full px-2 py-1 rounded bg-slate-700 border border-slate-600 text-[11px]" />
+      <ul id="drug-picker-list" class="text-[11px] space-y-1"></ul>
+      <div id="drug-picker-empty" class="text-[10px] text-slate-500 hidden">No matches</div>
+    </div>
+  </div>
   <input type="datetime-local" name="scheduled_for" required class="border border-slate-600 rounded px-3 py-2 md:col-span-2 bg-slate-700 text-slate-100" />
   <input type="number" min="1" name="quantity" value="1" required placeholder="Qty" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 text-slate-100" />
   <input name="notes" placeholder="Notes" class="border border-slate-600 rounded px-3 py-2 md:col-span-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
@@ -700,8 +716,20 @@
         window.__patients = pts;
         const list = document.getElementById('patient-list');
         list.innerHTML='';
-        const sel = document.querySelector('select[name=patient_id]');
-        sel.innerHTML='<option value="" disabled selected>Select patient</option>';
+        const listEl=document.getElementById('patient-picker-list'); const empty=document.getElementById('patient-picker-empty'); const searchInput=document.getElementById('patient-picker-search');
+        if(listEl){
+          listEl.innerHTML='';
+          const term=(searchInput? searchInput.value.toLowerCase(): '');
+          let rows=filterPatients();
+          if(term){ rows=rows.filter(p=> p.name.toLowerCase().includes(term) || String(p.id)===term); }
+          if(!rows.length){ empty.classList.remove('hidden'); } else { empty.classList.add('hidden'); }
+          rows.forEach(p=>{
+            const li=document.createElement('li');
+            let cond=''; if(p.condition){ cond="<span class=\"text-[9px] px-1 rounded bg-indigo-600/30\">"+escapeHTML(p.condition)+"</span>"; }
+            li.innerHTML="<button type='button' data-pick-patient='"+p.id+"' class='w-full text-left px-2 py-1 rounded hover:bg-slate-700 flex items-center gap-2'><span class='text-[10px] px-1 py-0.5 rounded bg-slate-700 border border-slate-600'>#"+p.id+"</span><span class='flex-1 truncate'>"+escapeHTML(p.name)+"</span>"+cond+"</button>";
+            listEl.append(li);
+          });
+        }
         filterPatients().forEach(p=>{
           const li=document.createElement('li');
           li.className='py-1 flex items-center justify-between gap-2';
@@ -747,8 +775,22 @@
         window.__drugs = drugs;
         const list = document.getElementById('drug-list');
         list.innerHTML='';
-        const sel = document.querySelector('select[name=drug_id]');
-        sel.innerHTML='<option value="" disabled selected>Select drug</option>';
+        const dList=document.getElementById('drug-picker-list'); const dEmpty=document.getElementById('drug-picker-empty'); const dSearch=document.getElementById('drug-picker-search');
+        if(dList){
+          dList.innerHTML='';
+          let rows=filterDrugs();
+          const term=(dSearch? dSearch.value.toLowerCase(): '');
+            if(term){ rows=rows.filter(d=> d.name.toLowerCase().includes(term) || String(d.id)===term); }
+          if(!rows.length){ dEmpty.classList.remove('hidden'); } else { dEmpty.classList.add('hidden'); }
+          rows.forEach(d=>{
+            const li=document.createElement('li');
+            const low=(d.stock??0) <= (d.reorder_level??0);
+            let dosage=''; if(d.dosage){ dosage="<span class=\"text-[9px] px-1 rounded bg-slate-600/50\">"+escapeHTML(d.dosage)+"</span>"; }
+            const stockBadgeClass= low? 'bg-red-600/30 text-red-300':'bg-slate-600/40 text-slate-300';
+            li.innerHTML="<button type='button' data-pick-drug='"+d.id+"' class='w-full text-left px-2 py-1 rounded hover:bg-slate-700 flex items-center gap-2'><span class='text-[10px] px-1 py-0.5 rounded bg-slate-700 border border-slate-600'>#"+d.id+"</span><span class='flex-1 truncate'>"+escapeHTML(d.name)+"</span>"+dosage+"<span class='text-[9px] px-1 rounded "+stockBadgeClass+"'>"+(d.stock??0)+"</span></button>";
+            dList.append(li);
+          });
+        }
         filterDrugs().forEach(d=>{
           const li=document.createElement('li');
             li.className='py-1 flex items-center justify-between gap-2';
@@ -1002,6 +1044,34 @@ if(patientForm && !patientForm.__bound){
   document.getElementById('export-all').addEventListener('click', ()=>{ const parts=[]; if(window.__patients){ parts.push({name:'patients', rows:window.__patients}); } if(window.__drugs){ parts.push({name:'drugs', rows:window.__drugs}); } if(window.__deliveries){ parts.push({name:'deliveries', rows:window.__deliveries}); } if(!parts.length){ toast('No data','error'); return; } parts.forEach(p=> downloadFile(p.name+'.csv', toCSV(p.rows))); });
       // Global search
       const gs=document.getElementById('global-search'); const gsBox=document.getElementById('global-search-results');
+  // Patient & Drug picker logic
+      function togglePanel(id){
+        const p=document.getElementById(id);
+        if(!p){ return; }
+        const show=p.classList.contains('hidden');
+        closePanels();
+        if(show){ p.classList.remove('hidden'); }
+      }
+  function closePanels(){ ['patient-picker-panel','drug-picker-panel'].forEach(i=>{ const el=document.getElementById(i); if(el) el.classList.add('hidden'); }); }
+      document.addEventListener('click', e=>{
+        if(e.target.id==='patient-picker-btn'){
+          togglePanel('patient-picker-panel');
+        } else if(e.target.id==='drug-picker-btn'){
+          togglePanel('drug-picker-panel');
+        } else {
+          if(!e.target.closest('#patient-picker-panel') && !e.target.closest('#patient-picker-btn')){
+            const p=document.getElementById('patient-picker-panel');
+            if(p){ p.classList.add('hidden'); }
+          }
+          if(!e.target.closest('#drug-picker-panel') && !e.target.closest('#drug-picker-btn')){
+            const p2=document.getElementById('drug-picker-panel');
+            if(p2){ p2.classList.add('hidden'); }
+          }
+        }
+      });
+  document.addEventListener('input', e=>{ if(e.target.id==='patient-picker-search'){ refreshPatients(); } if(e.target.id==='drug-picker-search'){ refreshDrugs(); } });
+  document.addEventListener('click', e=>{ const btn=e.target.closest('button[data-pick-patient]'); if(btn){ const id=Number(btn.getAttribute('data-pick-patient')); const hidden=document.querySelector('input[name=patient_id]'); hidden.value=id; document.getElementById('patient-picker-current').textContent='#'+id; closePanels(); } });
+  document.addEventListener('click', e=>{ const btn=e.target.closest('button[data-pick-drug]'); if(btn){ const id=Number(btn.getAttribute('data-pick-drug')); const hidden=document.querySelector('input[name=drug_id]'); hidden.value=id; document.getElementById('drug-picker-current').textContent='#'+id; closePanels(); } });
       if(gs){
         gs.addEventListener('input', ()=>{
           const q=gs.value.trim().toLowerCase();
