@@ -16,43 +16,44 @@
   <meta name="twitter:site" content="@lovable_dev" />
   <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
-  <!DOCTYPE html>
-  <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Friendly Med Pal 2.0</title>
-    <link rel="icon" href="/favicon.ico" />
-    <!-- Early theme class to avoid flash -->
-    <script>
-      // Tailwind config (dark mode removed)
-      tailwind.config = {};
-    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      body { font-feature-settings: "cv02","cv03","cv04","cv11"; background: linear-gradient(140deg,#0f172a,#020617 70%) fixed; position:relative; }
-      body::before{content:"";position:fixed;inset:0;background:radial-gradient(circle at 20% 20%, rgba(99,102,241,0.35), transparent 60%), radial-gradient(circle at 80% 70%, rgba(14,165,233,0.25), transparent 65%);pointer-events:none;z-index:-2;}
-      body::after{content:"";position:fixed;inset:0;background:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.15"/></svg>');mix-blend-mode:overlay;pointer-events:none;z-index:-1;opacity:.25;}
+      body { font-feature-settings: "cv02","cv03","cv04","cv11"; background: linear-gradient(145deg,#0f172a,#020617 70%) fixed; position:relative; min-height:100vh; color:#f1f5f9; }
+      body::before{content:"";position:fixed;inset:0;background:radial-gradient(circle at 18% 18%, rgba(99,102,241,0.40), transparent 62%), radial-gradient(circle at 82% 75%, rgba(14,165,233,0.32), transparent 68%);pointer-events:none;z-index:-2;}
+      body::after{content:"";position:fixed;inset:0;background:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.14"/></svg>');mix-blend-mode:overlay;pointer-events:none;z-index:-1;opacity:.28;}
       .fade-enter { opacity:0; transform: translateY(4px); }
       .fade-enter-active { transition: all .25s; opacity:1; transform: translateY(0); }
       .spinner { width:18px; height:18px; border:3px solid rgba(255,255,255,.35); border-top-color: #6366f1; border-radius:50%; animation: spin 0.8s linear infinite; }
       @keyframes spin { to { transform: rotate(360deg);} }
-      .glass { background: linear-gradient(145deg, rgba(30,41,59,.85), rgba(15,23,42,.7)); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border:1px solid rgba(255,255,255,0.06); box-shadow: 0 4px 16px -4px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,0.04) inset; }
+      .glass { position:relative; background:linear-gradient(155deg, rgba(30,41,59,.92), rgba(15,23,42,.82)); backdrop-filter: blur(22px) saturate(170%); -webkit-backdrop-filter: blur(22px) saturate(170%); border:1px solid rgba(255,255,255,0.06); box-shadow:0 8px 28px -6px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,0.04) inset; overflow:hidden; }
+      .glass::before{content:"";position:absolute;inset:0;background:linear-gradient(160deg,rgba(255,255,255,0.08),rgba(255,255,255,0) 45%);pointer-events:none;}
       .card-hover { transition: all .45s cubic-bezier(.4,.2,.2,1); }
-      .card-hover:hover { transform: translateY(-4px); box-shadow: 0 10px 28px -6px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,0.05) inset; }
-  .heading-gradient { background: linear-gradient(92deg,#fff 0%,#93c5fd 40%,#818cf8 60%,#c7d2fe 90%); -webkit-background-clip: text; background-clip:text; color:transparent; }
-      #main-nav { position:relative; }
-      #nav-indicator { position:absolute; left:0; top:0; height:30px; border-radius:999px; background:rgba(100,116,139,0.3); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.07); transition: all .5s cubic-bezier(.65,.05,.36,1); box-shadow:0 4px 12px -4px rgba(0,0,0,.55); }
-      .pill-btn { position:relative; z-index:1; }
+      .card-hover:hover { transform: translateY(-4px); box-shadow: 0 16px 40px -10px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,0.05) inset; }
+      .heading-gradient { background: linear-gradient(92deg,#fff 0%,#93c5fd 40%,#818cf8 60%,#c7d2fe 90%); -webkit-background-clip: text; background-clip:text; color:transparent; }
+  #main-nav { position:relative; z-index:30; }
+  .sticky-nav{position:sticky;top:0;z-index:40;padding-top:.5rem;background:linear-gradient(180deg,rgba(15,23,42,.95),rgba(15,23,42,.85));backdrop-filter:blur(14px);}      
+  #nav-indicator { position:absolute; left:0; top:1px; height:36px; border-radius:999px; background:rgba(100,116,139,0.35); backdrop-filter:blur(14px); border:1px solid rgba(255,255,255,0.08); transition: all .5s cubic-bezier(.65,.05,.36,1); box-shadow:0 4px 14px -4px rgba(0,0,0,.55); }
+  .pill-btn { position:relative; z-index:1; display:flex; align-items:center; justify-content:center; height:36px; line-height:1; }
+  /* Horizontal nav: keep in one line, allow scroll if overflow */
+  .nav-scroll { flex-wrap:nowrap !important; overflow-x:auto; -ms-overflow-style:none; scrollbar-width:none; }
+  .nav-scroll::-webkit-scrollbar{display:none;}
+      /* Panels (reduce see-through) */
+      [data-view].bg-slate-800{background:linear-gradient(155deg,rgba(30,41,59,0.94),rgba(15,23,42,0.88));backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);border-color:rgba(255,255,255,0.07);}
+      /* Table enhancements */
+      table thead{backdrop-filter:blur(12px);} table tbody tr:nth-child(even){background:rgba(255,255,255,0.015);} table tbody tr:hover{background:rgba(255,255,255,0.05);} th{font-weight:600; letter-spacing:.5px;}
+      /* Scrollbars */
+      .soft-scroll::-webkit-scrollbar{width:10px;} .soft-scroll::-webkit-scrollbar-track{background:transparent;} .soft-scroll::-webkit-scrollbar-thumb{background:#475569;border-radius:6px;} .soft-scroll::-webkit-scrollbar-thumb:hover{background:#64748b;}
+      /* Search dropdown layering */
+      #global-search-results{z-index:100;}
     </style>
   </head>
   <body class="min-h-screen bg-slate-900 text-slate-100 transition-colors">
     <div class="max-w-6xl mx-auto p-6 space-y-10">
-      <header class="flex flex-col gap-4">
+  <header class="flex flex-col gap-4 pb-2 border-b border-slate-700/60">
         <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
           <div>
-            <h1 class="text-3xl font-bold tracking-tight flex items-center gap-2">Friendly Med Pal <span class="text-xs font-medium px-2 py-0.5 rounded bg-indigo-600/20 text-indigo-300 border border-indigo-500/30">v2</span></h1>
-            <p class="text-slate-500 dark:text-slate-400 text-sm">Drug delivery & adherence tracking dashboard</p>
+            <h1 class="heading-gradient text-4xl font-semibold tracking-tight flex items-center gap-2">Friendly Med Pal <span class="text-xs font-medium px-2 py-0.5 rounded bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 backdrop-blur-sm">v2</span></h1>
+            <p class="text-slate-400 text-sm tracking-wide">Drug delivery & adherence tracking dashboard</p>
           </div>
           <div class="flex items-center gap-3 text-xs text-slate-400">
             <span id="api-indicator" class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-300 animate-pulse" id="api-dot"></span> API: checking</span>
@@ -64,20 +65,20 @@
           <div id="global-search-results" class="hidden absolute z-40 mt-1 inset-x-0 bg-slate-800 border border-slate-700 rounded shadow-lg max-h-72 overflow-auto text-xs"></div>
         </div>
       </header>
-      <nav id="main-nav" class="flex flex-wrap gap-1 text-sm mt-2 p-1 rounded-full bg-slate-800/60 backdrop-blur border border-slate-700/70">
+      <nav id="main-nav" class="sticky-nav nav-scroll flex gap-1 text-sm mt-2 p-1 rounded-full bg-slate-800/60 backdrop-blur border border-slate-700/70 relative">
         <span id="nav-indicator"></span>
-        <button data-tab="dashboard" class="tab-btn pill-btn px-4 py-1.5 rounded-full bg-indigo-600 text-white shadow-inner">Dashboard</button>
-        <button data-tab="patients" class="tab-btn pill-btn px-4 py-1.5 rounded-full text-slate-300 hover:text-white">Patients</button>
-        <button data-tab="drugs" class="tab-btn pill-btn px-4 py-1.5 rounded-full text-slate-300 hover:text-white">Drugs</button>
-        <button data-tab="deliveries" class="tab-btn pill-btn px-4 py-1.5 rounded-full text-slate-300 hover:text-white">Deliveries</button>
-        <button data-tab="history" class="tab-btn pill-btn px-4 py-1.5 rounded-full text-slate-300 hover:text-white">History</button>
-        <button data-tab="analytics" class="tab-btn pill-btn px-4 py-1.5 rounded-full text-slate-300 hover:text-white">Analytics</button>
-        <button data-tab="calendar" class="tab-btn pill-btn px-4 py-1.5 rounded-full text-slate-300 hover:text-white">Calendar</button>
-        <button data-tab="alerts" class="tab-btn pill-btn px-4 py-1.5 rounded-full text-slate-300 hover:text-white">Alerts</button>
-  <button data-tab="all-patients" class="tab-btn pill-btn px-4 py-1.5 rounded-full text-slate-300 hover:text-white">All Patients</button>
-  <button data-tab="all-drugs" class="tab-btn pill-btn px-4 py-1.5 rounded-full text-slate-300 hover:text-white">All Drugs</button>
-  <button data-tab="all-deliveries" class="tab-btn pill-btn px-4 py-1.5 rounded-full text-slate-300 hover:text-white">All Deliveries</button>
-        <button data-tab="settings" class="tab-btn pill-btn px-4 py-1.5 rounded-full text-slate-300 hover:text-white">Settings</button>
+        <button data-tab="dashboard" class="tab-btn pill-btn px-4 rounded-full bg-indigo-600 text-white shadow-inner whitespace-nowrap">Dashboard</button>
+        <button data-tab="all-patients" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">All Patients <span class="text-[10px] ml-1 opacity-60" data-count="patients"></span></button>
+        <button data-tab="patients" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Add Patient</button>
+        <button data-tab="all-drugs" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">All Drugs <span class="text-[10px] ml-1 opacity-60" data-count="drugs"></span></button>
+        <button data-tab="drugs" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Add Drug</button>
+        <button data-tab="all-deliveries" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">All Deliveries <span class="text-[10px] ml-1 opacity-60" data-count="deliveries"></span></button>
+        <button data-tab="deliveries" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Schedule</button>
+        <button data-tab="analytics" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Analytics</button>
+        <button data-tab="calendar" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Calendar</button>
+        <button data-tab="alerts" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Alerts</button>
+        <button data-tab="history" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">History</button>
+        <button data-tab="settings" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Settings</button>
       </nav>
 
       <section data-view="dashboard" class="space-y-8">
@@ -246,22 +247,30 @@
           <h2 class="text-lg font-semibold heading-gradient">All Patients</h2>
           <div class="flex items-center gap-2 ml-auto">
             <input id="all-patients-search" placeholder="Search" class="bg-slate-900/40 border border-slate-600 rounded px-2 py-1 text-xs placeholder-slate-500" />
-            <button id="export-all-patients" class="text-[10px] px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Export</button>
+            <button id="export-all-patients" class="text-[10px] px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Export All</button>
+            <button id="export-all-patients-filtered" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-200">Export Filtered</button>
+            <select id="all-patients-pagesize" class="bg-slate-900/40 border border-slate-600 rounded px-2 py-1 text-[10px]">
+              <option>25</option><option>50</option><option>100</option>
+            </select>
           </div>
         </div>
         <div class="overflow-auto soft-scroll max-h-[60vh] rounded-lg border border-slate-700/70">
-          <table class="w-full text-left text-xs">
-            <thead class="bg-slate-800/60 sticky top-0 backdrop-blur">
+          <table class="w-full text-left text-xs" id="tbl-all-patients">
+            <thead class="bg-slate-800/60 sticky top-0 backdrop-blur select-none">
               <tr class="text-slate-400">
-                <th class="py-2 px-3 font-medium">ID</th>
-                <th class="py-2 px-3 font-medium">Name</th>
-                <th class="py-2 px-3 font-medium">Age</th>
-                <th class="py-2 px-3 font-medium">Condition</th>
-                <th class="py-2 px-3 font-medium">Contact</th>
+                <th data-sort="id" class="py-2 px-3 font-medium cursor-pointer">ID</th>
+                <th data-sort="name" class="py-2 px-3 font-medium cursor-pointer">Name</th>
+                <th data-sort="age" class="py-2 px-3 font-medium cursor-pointer">Age</th>
+                <th data-sort="condition" class="py-2 px-3 font-medium cursor-pointer">Condition</th>
+                <th data-sort="contact" class="py-2 px-3 font-medium cursor-pointer">Contact</th>
               </tr>
             </thead>
             <tbody id="all-patients-body" class="divide-y divide-slate-800"></tbody>
           </table>
+        </div>
+        <div class="flex items-center justify-between text-[10px] mt-1">
+          <div id="all-patients-info" class="text-slate-400"></div>
+          <div class="flex gap-1" id="all-patients-pager"></div>
         </div>
         <div id="all-patients-empty" class="text-[11px] text-slate-500"></div>
       </section>
@@ -272,21 +281,29 @@
           <h2 class="text-lg font-semibold heading-gradient">All Drugs</h2>
           <div class="flex items-center gap-2 ml-auto">
             <input id="all-drugs-search" placeholder="Search" class="bg-slate-900/40 border border-slate-600 rounded px-2 py-1 text-xs placeholder-slate-500" />
-            <button id="export-all-drugs" class="text-[10px] px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Export</button>
+            <button id="export-all-drugs" class="text-[10px] px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Export All</button>
+            <button id="export-all-drugs-filtered" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-200">Export Filtered</button>
+            <select id="all-drugs-pagesize" class="bg-slate-900/40 border border-slate-600 rounded px-2 py-1 text-[10px]">
+              <option>25</option><option>50</option><option>100</option>
+            </select>
           </div>
         </div>
         <div class="overflow-auto soft-scroll max-h-[60vh] rounded-lg border border-slate-700/70">
-          <table class="w-full text-left text-xs">
-            <thead class="bg-slate-800/60 sticky top-0 backdrop-blur">
+          <table class="w-full text-left text-xs" id="tbl-all-drugs">
+            <thead class="bg-slate-800/60 sticky top-0 backdrop-blur select-none">
               <tr class="text-slate-400">
-                <th class="py-2 px-3 font-medium">ID</th>
-                <th class="py-2 px-3 font-medium">Name</th>
-                <th class="py-2 px-3 font-medium">Dosage</th>
-                <th class="py-2 px-3 font-medium">Frequency</th>
+                <th data-sort="id" class="py-2 px-3 font-medium cursor-pointer">ID</th>
+                <th data-sort="name" class="py-2 px-3 font-medium cursor-pointer">Name</th>
+                <th data-sort="dosage" class="py-2 px-3 font-medium cursor-pointer">Dosage</th>
+                <th data-sort="frequency" class="py-2 px-3 font-medium cursor-pointer">Frequency</th>
               </tr>
             </thead>
             <tbody id="all-drugs-body" class="divide-y divide-slate-800"></tbody>
           </table>
+        </div>
+        <div class="flex items-center justify-between text-[10px] mt-1">
+          <div id="all-drugs-info" class="text-slate-400"></div>
+          <div class="flex gap-1" id="all-drugs-pager"></div>
         </div>
         <div id="all-drugs-empty" class="text-[11px] text-slate-500"></div>
       </section>
@@ -297,23 +314,31 @@
           <h2 class="text-lg font-semibold heading-gradient">All Deliveries</h2>
           <div class="flex items-center gap-2 ml-auto">
             <input id="all-deliveries-search" placeholder="Search (id / status / notes)" class="bg-slate-900/40 border border-slate-600 rounded px-2 py-1 text-xs placeholder-slate-500" />
-            <button id="export-all-deliveries" class="text-[10px] px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Export</button>
+            <button id="export-all-deliveries" class="text-[10px] px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Export All</button>
+            <button id="export-all-deliveries-filtered" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-200">Export Filtered</button>
+            <select id="all-deliveries-pagesize" class="bg-slate-900/40 border border-slate-600 rounded px-2 py-1 text-[10px]">
+              <option>25</option><option>50</option><option>100</option>
+            </select>
           </div>
         </div>
         <div class="overflow-auto soft-scroll max-h-[60vh] rounded-lg border border-slate-700/70">
-          <table class="w-full text-left text-[11px]">
-            <thead class="bg-slate-800/60 sticky top-0 backdrop-blur">
+          <table class="w-full text-left text-[11px]" id="tbl-all-deliveries">
+            <thead class="bg-slate-800/60 sticky top-0 backdrop-blur select-none">
               <tr class="text-slate-400">
-                <th class="py-2 px-3 font-medium">ID</th>
-                <th class="py-2 px-3 font-medium">Patient</th>
-                <th class="py-2 px-3 font-medium">Drug</th>
-                <th class="py-2 px-3 font-medium">Scheduled</th>
-                <th class="py-2 px-3 font-medium">Status</th>
-                <th class="py-2 px-3 font-medium">Notes</th>
+                <th data-sort="id" class="py-2 px-3 font-medium cursor-pointer">ID</th>
+                <th data-sort="patient_id" class="py-2 px-3 font-medium cursor-pointer">Patient</th>
+                <th data-sort="drug_id" class="py-2 px-3 font-medium cursor-pointer">Drug</th>
+                <th data-sort="scheduled_for" class="py-2 px-3 font-medium cursor-pointer">Scheduled</th>
+                <th data-sort="status" class="py-2 px-3 font-medium cursor-pointer">Status</th>
+                <th data-sort="notes" class="py-2 px-3 font-medium cursor-pointer">Notes</th>
               </tr>
             </thead>
             <tbody id="all-deliveries-body" class="divide-y divide-slate-800"></tbody>
           </table>
+        </div>
+        <div class="flex items-center justify-between text-[10px] mt-1">
+          <div id="all-deliveries-info" class="text-slate-400"></div>
+          <div class="flex gap-1" id="all-deliveries-pager"></div>
         </div>
         <div id="all-deliveries-empty" class="text-[11px] text-slate-500"></div>
       </section>
@@ -850,56 +875,152 @@
       document.getElementById('patient-modal').addEventListener('click', e=>{ if(e.target.id==='patient-modal'){ document.getElementById('pm-close').click(); }});
 
       // --- Overview tables rendering ---
+      // Overview table state & helpers
+      const overviewState={
+        patients:{sortKey:'id',sortDir:'asc',page:1,pageSize:25,search:''},
+        drugs:{sortKey:'id',sortDir:'asc',page:1,pageSize:25,search:''},
+        deliveries:{sortKey:'id',sortDir:'asc',page:1,pageSize:25,search:''}
+      };
+      function debounce(fn,ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
+      function applySort(rows,key,dir){
+        return rows.sort((a,b)=>{
+          const av=a[key]??''; const bv=b[key]??'';
+          if(av<bv){ return dir==='asc' ? -1 : 1; }
+          if(av>bv){ return dir==='asc' ? 1 : -1; }
+          return 0;
+        });
+      }
+      function slicePage(rows,page,pageSize){ const start=(page-1)*pageSize; return rows.slice(start,start+pageSize); }
+      function pager(total,page,pageSize,el,prefix,renderFn){
+        el.innerHTML='';
+        const pages=Math.max(1,Math.ceil(total/pageSize));
+        if(page>pages){ page=pages; }
+        overviewState[prefix].page=page;
+        const mk=(p,l)=>{
+          const b=document.createElement('button');
+          b.textContent=l;
+          b.className='px-2 py-0.5 rounded border text-[10px] '+(p===page?'bg-indigo-600 border-indigo-600 text-white':'border-slate-600 hover:bg-slate-700');
+          b.onclick=()=>{ overviewState[prefix].page=p; renderFn(); };
+          return b;
+        };
+        if(pages<=1){ return; }
+        el.append(mk(Math.max(1,page-1),'‹'));
+        for(let p=1;p<=pages && p<=6; p++){
+          if(p===6 && pages>6){
+            const more=document.createElement('span');
+            more.textContent='…';
+            more.className='px-1 text-slate-500';
+            el.append(more);
+            el.append(mk(pages,pages));
+            break;
+          }
+            el.append(mk(p,p));
+        }
+        el.append(mk(Math.min(pages,page+1),'›'));
+      }
+      function updateCounts(){ ['patients','drugs','deliveries'].forEach(k=>{ const span=document.querySelector(`[data-count=${k}]`); if(span){ const data=window['__'+k]||[]; span.textContent=data.length; } }); }
+      function sortIndicator(th,active,dir){
+        th.querySelectorAll('.sort-ind').forEach(e=>e.remove());
+        const span=document.createElement('span');
+        span.className='sort-ind ml-1 opacity-60';
+        if(active){ span.textContent= dir==='asc' ? '▲' : '▼'; }
+        th.append(span);
+      }
       function renderAllPatients(){
-        const body=document.getElementById('all-patients-body'); if(!body) return;
+        const body=document.getElementById('all-patients-body');
+        if(!body){ return; }
         const empty=document.getElementById('all-patients-empty');
-        const term=(document.getElementById('all-patients-search').value||'').toLowerCase();
-        const rows=(window.__patients||[]).filter(p=> !term || p.name.toLowerCase().includes(term) || (p.condition||'').toLowerCase().includes(term) || String(p.id)===term);
-        body.innerHTML = rows.map(p=>`<tr class='hover:bg-slate-700/40 transition'>
-          <td class='px-3 py-2 font-medium text-slate-300'>${p.id}</td>
-          <td class='px-3 py-2'>${escapeHTML(p.name)}</td>
-          <td class='px-3 py-2 text-slate-400'>${p.age??'—'}</td>
-          <td class='px-3 py-2 text-slate-400'>${p.condition? escapeHTML(p.condition):'—'}</td>
-          <td class='px-3 py-2 text-slate-400'>${p.contact? escapeHTML(p.contact):'—'}</td>
-        </tr>`).join('');
-        empty.textContent = rows.length? '' : 'No patients found';
+        const info=document.getElementById('all-patients-info');
+        const pagerEl=document.getElementById('all-patients-pager');
+        const st=overviewState.patients;
+        st.pageSize=Number(document.getElementById('all-patients-pagesize').value)||25;
+        st.search=(document.getElementById('all-patients-search').value||'').toLowerCase();
+        let rows=(window.__patients||[]).filter(p=> !st.search || p.name.toLowerCase().includes(st.search) || (p.condition||'').toLowerCase().includes(st.search) || String(p.id)===st.search);
+        rows=applySort(rows, st.sortKey, st.sortDir);
+        const total=rows.length;
+        rows=slicePage(rows, st.page, st.pageSize);
+        body.innerHTML=rows.map(p=>`<tr class='hover:bg-slate-700/40 transition'><td class='px-3 py-2 font-medium text-slate-300'>${p.id}</td><td class='px-3 py-2'>${escapeHTML(p.name)}</td><td class='px-3 py-2 text-slate-400'>${p.age??'—'}</td><td class='px-3 py-2 text-slate-400'>${p.condition? escapeHTML(p.condition):'—'}</td><td class='px-3 py-2 text-slate-400'>${p.contact? escapeHTML(p.contact):'—'}</td></tr>`).join('');
+        empty.textContent= total? '' : 'No patients found';
+        info.textContent= total? `Showing ${(st.page-1)*st.pageSize+1}-${Math.min(total, st.page*st.pageSize)} of ${total}` : '';
+        pager(total, st.page, st.pageSize, pagerEl, 'patients', renderAllPatients);
+        updateCounts();
+        document.querySelectorAll('#tbl-all-patients thead th').forEach(th=> sortIndicator(th, th.dataset.sort===st.sortKey, st.sortDir));
       }
       function renderAllDrugs(){
-        const body=document.getElementById('all-drugs-body'); if(!body) return;
+        const body=document.getElementById('all-drugs-body');
+        if(!body){ return; }
         const empty=document.getElementById('all-drugs-empty');
-        const term=(document.getElementById('all-drugs-search').value||'').toLowerCase();
-        const rows=(window.__drugs||[]).filter(d=> !term || d.name.toLowerCase().includes(term) || (d.dosage||'').toLowerCase().includes(term) || String(d.id)===term);
-        body.innerHTML = rows.map(d=>`<tr class='hover:bg-slate-700/40 transition'>
-          <td class='px-3 py-2 font-medium text-slate-300'>${d.id}</td>
-          <td class='px-3 py-2'>${escapeHTML(d.name)}</td>
-          <td class='px-3 py-2 text-slate-400'>${d.dosage? escapeHTML(d.dosage):'—'}</td>
-          <td class='px-3 py-2 text-slate-400'>${d.frequency? escapeHTML(d.frequency):'—'}</td>
-        </tr>`).join('');
-        empty.textContent = rows.length? '' : 'No drugs found';
+        const info=document.getElementById('all-drugs-info');
+        const pagerEl=document.getElementById('all-drugs-pager');
+        const st=overviewState.drugs;
+        st.pageSize=Number(document.getElementById('all-drugs-pagesize').value)||25;
+        st.search=(document.getElementById('all-drugs-search').value||'').toLowerCase();
+        let rows=(window.__drugs||[]).filter(d=> !st.search || d.name.toLowerCase().includes(st.search) || (d.dosage||'').toLowerCase().includes(st.search) || String(d.id)===st.search);
+        rows=applySort(rows, st.sortKey, st.sortDir);
+        const total=rows.length;
+        rows=slicePage(rows, st.page, st.pageSize);
+        body.innerHTML=rows.map(d=>`<tr class='hover:bg-slate-700/40 transition'><td class='px-3 py-2 font-medium text-slate-300'>${d.id}</td><td class='px-3 py-2'>${escapeHTML(d.name)}</td><td class='px-3 py-2 text-slate-400'>${d.dosage? escapeHTML(d.dosage):'—'}</td><td class='px-3 py-2 text-slate-400'>${d.frequency? escapeHTML(d.frequency):'—'}</td></tr>`).join('');
+        empty.textContent= total? '' : 'No drugs found';
+        info.textContent= total? `Showing ${(st.page-1)*st.pageSize+1}-${Math.min(total, st.page*st.pageSize)} of ${total}` : '';
+        pager(total, st.page, st.pageSize, pagerEl, 'drugs', renderAllDrugs);
+        updateCounts();
+        document.querySelectorAll('#tbl-all-drugs thead th').forEach(th=> sortIndicator(th, th.dataset.sort===st.sortKey, st.sortDir));
       }
       function renderAllDeliveries(){
-        const body=document.getElementById('all-deliveries-body'); if(!body) return;
+        const body=document.getElementById('all-deliveries-body');
+        if(!body){ return; }
         const empty=document.getElementById('all-deliveries-empty');
-        const term=(document.getElementById('all-deliveries-search').value||'').toLowerCase();
-  const rows=(window.__deliveries||[]).filter(d=>{ if(!term){ return true; } return String(d.id)===term || d.status.toLowerCase().includes(term) || (d.notes||'').toLowerCase().includes(term); });
-        body.innerHTML = rows.map(d=>`<tr class='hover:bg-slate-700/40 transition'>
-          <td class='px-3 py-2 font-medium text-slate-300'>${d.id}</td>
-          <td class='px-3 py-2 text-slate-400'>${d.patient_id}</td>
-          <td class='px-3 py-2 text-slate-400'>${d.drug_id}</td>
-          <td class='px-3 py-2 text-slate-400 whitespace-nowrap'>${d.scheduled_for}</td>
-          <td class='px-3 py-2'>${statusBadge(d.status)}</td>
-          <td class='px-3 py-2 text-slate-400 max-w-[200px] truncate' title='${d.notes? escapeHTML(d.notes):''}'>${d.notes? escapeHTML(d.notes):'—'}</td>
-        </tr>`).join('');
-        empty.textContent = rows.length? '' : 'No deliveries found';
+        const info=document.getElementById('all-deliveries-info');
+        const pagerEl=document.getElementById('all-deliveries-pager');
+        const st=overviewState.deliveries;
+        st.pageSize=Number(document.getElementById('all-deliveries-pagesize').value)||25;
+        st.search=(document.getElementById('all-deliveries-search').value||'').toLowerCase();
+        let rows=(window.__deliveries||[]).filter(d=>{ if(!st.search){ return true; } return String(d.id)===st.search || d.status.toLowerCase().includes(st.search) || (d.notes||'').toLowerCase().includes(st.search); });
+        rows=applySort(rows, st.sortKey, st.sortDir);
+        const total=rows.length;
+        rows=slicePage(rows, st.page, st.pageSize);
+        body.innerHTML=rows.map(d=>`<tr class='hover:bg-slate-700/40 transition'><td class='px-3 py-2 font-medium text-slate-300'>${d.id}</td><td class='px-3 py-2 text-slate-400'>${d.patient_id}</td><td class='px-3 py-2 text-slate-400'>${d.drug_id}</td><td class='px-3 py-2 text-slate-400 whitespace-nowrap'>${d.scheduled_for}</td><td class='px-3 py-2'>${statusBadge(d.status)}</td><td class='px-3 py-2 text-slate-400 max-w-[200px] truncate' title='${d.notes? escapeHTML(d.notes):''}'>${d.notes? escapeHTML(d.notes):'—'}</td></tr>`).join('');
+        empty.textContent= total? '' : 'No deliveries found';
+        info.textContent= total? `Showing ${(st.page-1)*st.pageSize+1}-${Math.min(total, st.page*st.pageSize)} of ${total}` : '';
+        pager(total, st.page, st.pageSize, pagerEl, 'deliveries', renderAllDeliveries);
+        updateCounts();
+        document.querySelectorAll('#tbl-all-deliveries thead th').forEach(th=> sortIndicator(th, th.dataset.sort===st.sortKey, st.sortDir));
       }
-      document.addEventListener('input', e=>{
-        if(e.target.id==='all-patients-search') renderAllPatients();
-        else if(e.target.id==='all-drugs-search') renderAllDrugs();
-        else if(e.target.id==='all-deliveries-search') renderAllDeliveries();
+  // Debounced search & page size
+  const debouncedOverviewSearch = debounce(()=>{ overviewState.patients.page=1; overviewState.drugs.page=1; overviewState.deliveries.page=1; renderAllPatients(); renderAllDrugs(); renderAllDeliveries(); },250);
+  document.addEventListener('input', e=>{ if(['all-patients-search','all-drugs-search','all-deliveries-search'].includes(e.target.id)){ debouncedOverviewSearch(); } if(['all-patients-pagesize','all-drugs-pagesize','all-deliveries-pagesize'].includes(e.target.id)){ overviewState.patients.page=1; overviewState.drugs.page=1; overviewState.deliveries.page=1; renderAllPatients(); renderAllDrugs(); renderAllDeliveries(); }});
+  // Sorting handlers
+  document.addEventListener('click', e=>{
+        const th=e.target.closest('#tbl-all-patients th[data-sort], #tbl-all-drugs th[data-sort], #tbl-all-deliveries th[data-sort]');
+        if(!th){ return; }
+        const tableId=th.closest('table').id;
+        let group;
+        if(tableId==='tbl-all-patients'){ group='patients'; }
+        else if(tableId==='tbl-all-drugs'){ group='drugs'; }
+        else { group='deliveries'; }
+        const key=th.dataset.sort;
+        const st=overviewState[group];
+        if(st.sortKey===key){ st.sortDir= st.sortDir==='asc' ? 'desc' : 'asc'; }
+        else { st.sortKey=key; st.sortDir='asc'; }
+        st.page=1;
+        if(group==='patients'){ renderAllPatients(); }
+        else if(group==='drugs'){ renderAllDrugs(); }
+        else { renderAllDeliveries(); }
       });
-      document.getElementById('export-all-patients').addEventListener('click', ()=>{ if(!window.__patients){ toast('No data','error'); return; } downloadFile('patients.csv', toCSV(window.__patients)); });
+  document.getElementById('export-all-patients').addEventListener('click', ()=>{ if(!window.__patients){ toast('No data','error'); return; } downloadFile('patients.csv', toCSV(window.__patients)); });
+  document.getElementById('export-all-patients-filtered').addEventListener('click', ()=>{ const st=overviewState.patients; const term=st.search; const rows=(window.__patients||[]).filter(p=> !term || p.name.toLowerCase().includes(term) || (p.condition||'').toLowerCase().includes(term) || String(p.id)===term); downloadFile('patients_filtered.csv', toCSV(rows)); });
       document.getElementById('export-all-drugs').addEventListener('click', ()=>{ if(!window.__drugs){ toast('No data','error'); return; } downloadFile('drugs.csv', toCSV(window.__drugs)); });
+  document.getElementById('export-all-drugs-filtered').addEventListener('click', ()=>{ const st=overviewState.drugs; const term=st.search; const rows=(window.__drugs||[]).filter(d=> !term || d.name.toLowerCase().includes(term) || (d.dosage||'').toLowerCase().includes(term) || String(d.id)===term); downloadFile('drugs_filtered.csv', toCSV(rows)); });
       document.getElementById('export-all-deliveries').addEventListener('click', ()=>{ if(!window.__deliveries){ toast('No data','error'); return; } downloadFile('deliveries.csv', toCSV(window.__deliveries)); });
+  document.getElementById('export-all-deliveries-filtered').addEventListener('click', ()=>{
+        const st=overviewState.deliveries;
+        const term=st.search;
+        const rows=(window.__deliveries||[]).filter(d=>{
+          if(!term){ return true; }
+          return String(d.id)===term || d.status.toLowerCase().includes(term) || (d.notes||'').toLowerCase().includes(term);
+        });
+        downloadFile('deliveries_filtered.csv', toCSV(rows));
+      });
 
       // Analytics rendering
       function aggregateDeliveriesByDay(days=14){
