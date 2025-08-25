@@ -1436,16 +1436,32 @@ if(patientForm && !patientForm.__bound){
       function setInventoryLoading(v){ inventoryState.loading=v; document.getElementById('inv-loading').classList.toggle('hidden', !v); }
       async function loadInventoryData(){
         setInventoryLoading(true);
+        let attempt=0; let lastErr=null;
+        const statusEl=document.getElementById('inv-error');
+        if(statusEl){ statusEl.textContent=''; statusEl.classList.add('hidden'); }
         try {
-          await refreshDrugs(); // sets window.__drugs
-          const summary = await call('/api/inventory/summary');
-          inventoryState.summary=summary||[];
-          inventoryState.cache=(window.__drugs||[]).slice();
-          mergeInventorySummary();
-          renderInventory();
-          updateInventoryMetrics();
-        } catch(e){ console.error('inventory load', e); toast('Inventory load failed','error'); }
-        finally { setInventoryLoading(false); }
+          while(attempt<3){
+            try {
+              attempt++;
+              await refreshDrugs();
+              const summary = await call('/api/inventory/summary');
+              inventoryState.summary=summary||[];
+              inventoryState.cache=(window.__drugs||[]).slice();
+              mergeInventorySummary();
+              renderInventory();
+              updateInventoryMetrics();
+              lastErr=null; break;
+            } catch(e){
+              lastErr=e; console.warn('inventory load attempt', attempt, e);
+              await new Promise(r=> setTimeout(r, 400*attempt));
+            }
+          }
+          if(lastErr){
+            console.error('inventory load failed', lastErr);
+            toast('Inventory load failed','error');
+            if(statusEl){ statusEl.textContent='Failed to load inventory ('+ lastErr.message +'). Retry later.'; statusEl.classList.remove('hidden'); }
+          }
+        } finally { setInventoryLoading(false); }
       }
       function mergeInventorySummary(){
         const map=new Map(inventoryState.summary.map(s=>[s.id,s]));
