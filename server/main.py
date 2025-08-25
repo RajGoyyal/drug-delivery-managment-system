@@ -479,4 +479,18 @@ def inventory_summary():
 
 
 if __name__ == "__main__":  # pragma: no cover
-    app.run(host="127.0.0.1", port=8000, debug=True)
+    import os, sys
+    host = os.environ.get("HOST", "0.0.0.0")  # bind all interfaces by default
+    try:
+        port = int(os.environ.get("PORT", "8000"))
+    except ValueError:
+        port = 8000
+    print(f"[startup] Friendly Med Pal API starting on http://{host}:{port} (override with HOST / PORT env vars)", flush=True)
+    try:
+        app.run(host=host, port=port, debug=True)
+    except OSError as e:
+        print(f"[error] Failed to bind {host}:{port} -> {e}", file=sys.stderr)
+        if "in use" in str(e).lower():
+            alt = port + 1
+            print(f"[startup] Retrying on port {alt}", flush=True)
+            app.run(host=host, port=alt, debug=True)

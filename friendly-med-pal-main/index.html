@@ -639,7 +639,7 @@
         if(!activityStore.length){ empty.classList.remove('hidden'); return; }
         empty.classList.add('hidden');
         activityStore.forEach(a=>{
-          const li=document.createElement('li'); li.className='flex items-start gap-2';
+          const li=document.createElement('li'); li.className='py-1 flex items-center justify-between gap-2';
             li.innerHTML=`<span class='mt-0.5 w-1.5 h-1.5 rounded-full bg-indigo-500'></span><div class='flex-1'><div class='font-medium'>${a.action}</div><div class='text-[10px] text-slate-500'>${a.time}${a.meta? ' • '+a.meta:''}</div></div>`;
           list.append(li);
         });
@@ -658,7 +658,7 @@
       }
   document.addEventListener('click', e=>{ if(e.target && e.target.id==='clear-activity'){ const list=document.getElementById('activity-log'); if(list){ list.innerHTML=''; } activityStore=[]; persistActivity(); const empty=document.getElementById('activity-empty'); if(empty){ empty.classList.remove('hidden'); } }});
 
-      function escapeHTML(str){ return str.replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])); }
+      function escapeHTML(str){ return str.replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"})); }
       function confirmAction(msg){ return window.confirm(msg); }
 
       async function refreshPatients(){
