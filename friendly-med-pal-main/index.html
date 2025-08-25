@@ -955,6 +955,68 @@ if(patientForm && !patientForm.__bound){
     let countdown = 10; const cdEl=document.getElementById('refresh-countdown'); const auto=document.getElementById('auto-refresh');
   let refreshInterval = Number(loadPref('refreshInterval',10));
   setInterval(()=>{ if(!auto.checked){ cdEl.textContent=''; return; } countdown--; if(countdown<=0){ countdown=refreshInterval; refreshDeliveries(); loadStats(); renderAnalytics(); renderAlerts(); renderCalendar(); } cdEl.textContent='Refresh in '+countdown+'s'; },1000);
+
+    // --- Calendar Implementation (added) ---
+    const calendarState = { month: new Date(), selected: null };
+    function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+    function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
+    function fmtDate(d){ return d.toISOString().slice(0,10); }
+    function renderCalendar(){
+      const grid=document.getElementById('cal-grid'); if(!grid) return;
+      const title=document.getElementById('cal-title');
+      const month=startOfMonth(calendarState.month);
+      const end=endOfMonth(calendarState.month);
+      const firstWeekday=(month.getDay()+6)%7; // make Monday=0
+      const days=[];
+      for(let i=0;i<firstWeekday;i++){ days.push(null); }
+      for(let day=1; day<=end.getDate(); day++){ days.push(new Date(month.getFullYear(), month.getMonth(), day)); }
+      while(days.length%7!==0) days.push(null);
+      title.querySelector && (title.querySelector('span[data-cal-range]') || (function(){ const sp=document.createElement('span'); sp.dataset.calRange='1'; sp.className='text-xs font-normal text-slate-400'; title.appendChild(sp); })());
+      const label = month.toLocaleString(undefined,{month:'long', year:'numeric'});
+      // deliveries grouped by date
+      const deliveries=(window.__deliveries||[]).slice();
+      const byDate=new Map();
+      deliveries.forEach(d=>{ if(!d.scheduled_for) return; const key=d.scheduled_for.slice(0,10); if(!byDate.has(key)) byDate.set(key, []); byDate.get(key).push(d); });
+      grid.innerHTML=days.map(d=>{
+        if(!d) return `<div class='h-20 rounded bg-slate-900/40 border border-slate-800'></div>`;
+        const key=fmtDate(d);
+        const list=byDate.get(key)||[];
+        let statusCount={pending:0, delivered:0, missed:0, cancelled:0};
+        list.forEach(x=>{ statusCount[x.status]=(statusCount[x.status]||0)+1; });
+        const badge=list.length? `<div class='mt-1 flex flex-wrap gap-0.5 text-[9px]'>${Object.entries(statusCount).filter(([k,v])=>v).map(([k,v])=>`<span class='px-1 rounded bg-slate-700 ${k==='pending'?'text-amber-300':k==='delivered'?'text-emerald-300':k==='missed'?'text-rose-300':'text-slate-400'}'>${k[0]}:${v}</span>`).join('')}</div>` : '';
+        const todayKey=fmtDate(new Date());
+        const isToday= key===todayKey;
+        const sel= calendarState.selected && fmtDate(calendarState.selected)===key;
+        return `<button data-cal-day='${key}' class='h-20 w-full flex flex-col items-start text-left p-1 rounded border ${sel? 'border-indigo-500 bg-indigo-500/10': 'border-slate-700'} ${isToday?'ring-1 ring-indigo-400':''} hover:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400'>
+          <span class='text-[11px] font-medium ${list.length? 'text-white':'text-slate-300'}'>${d.getDate()}</span>
+          <span class='mt-auto text-[9px] text-slate-500'>${list.length||''}</span>
+          ${badge}
+        </button>`;
+      }).join('');
+      // Selected day list
+      updateCalendarDayList();
+      // Month label update
+      const rangeSpan=title.querySelector('[data-cal-range]'); if(rangeSpan){ rangeSpan.textContent='\u00A0'+label; }
+    }
+    function updateCalendarDayList(){
+      const listEl=document.getElementById('cal-day-list'); if(!listEl) return;
+      if(!calendarState.selected){ listEl.innerHTML='<p class="text-slate-500">No day selected.</p>'; return; }
+      const key=fmtDate(calendarState.selected);
+      const items=(window.__deliveries||[]).filter(d=> d.scheduled_for && d.scheduled_for.slice(0,10)===key);
+      if(!items.length){ listEl.innerHTML='<p class="text-slate-500">No deliveries.</p>'; return; }
+      listEl.innerHTML=items.sort((a,b)=> a.scheduled_for.localeCompare(b.scheduled_for)).map(d=>`<div class='p-2 rounded bg-slate-900/50 border border-slate-700 flex justify-between gap-2'>
+        <span class='truncate'>#${d.id} P${d.patient_id} D${d.drug_id}</span>
+        <span class='text-[10px] uppercase tracking-wide'>${d.status}</span>
+      </div>`).join('');
+    }
+    document.addEventListener('click', e=>{
+      const dayBtn=e.target.closest && e.target.closest('[data-cal-day]');
+      if(dayBtn){ calendarState.selected=new Date(dayBtn.getAttribute('data-cal-day')); renderCalendar(); }
+      if(e.target.id==='cal-prev'){ calendarState.month=new Date(calendarState.month.getFullYear(), calendarState.month.getMonth()-1, 1); renderCalendar(); }
+      if(e.target.id==='cal-next'){ calendarState.month=new Date(calendarState.month.getFullYear(), calendarState.month.getMonth()+1, 1); renderCalendar(); }
+      if(e.target.id==='cal-today'){ calendarState.month=new Date(); calendarState.selected=new Date(); renderCalendar(); }
+    });
+
     function renderHistory(){
       const list = document.getElementById('history-list'); if(!list) return;
       const deliveries = (window.__deliveries||[]).slice();
@@ -1509,9 +1571,9 @@ if(patientForm && !patientForm.__bound){
       function openInventoryAdjust(id){ const modal=document.getElementById('inv-adjust-modal'); const drug=inventoryState.merged.find(d=> d.id===id); if(!drug){ return; } modal.classList.remove('hidden'); modal.classList.add('flex'); modal.dataset.drugId=id; document.getElementById('inv-adjust-name').value=`${drug.name} (${drug.dosage||''})`; document.getElementById('inv-adjust-current').value=drug.stock||0; document.getElementById('inv-adjust-reorder').value=drug.reorder_level||0; document.getElementById('inv-adjust-delta').value=''; document.getElementById('inv-adjust-reason').value='manual'; document.getElementById('inv-adjust-error').textContent=''; }
       function closeInventoryAdjust(){ const modal=document.getElementById('inv-adjust-modal'); modal.classList.add('hidden'); modal.classList.remove('flex'); }
       document.getElementById('inv-adjust-form').addEventListener('submit', async e=>{ e.preventDefault(); const modal=document.getElementById('inv-adjust-modal'); const id=Number(modal.dataset.drugId); const delta=parseInt(document.getElementById('inv-adjust-delta').value,10); const reason=document.getElementById('inv-adjust-reason').value||'manual'; if(isNaN(delta)||!delta){ document.getElementById('inv-adjust-error').textContent='Enter a non-zero number'; return; } const spin=document.getElementById('inv-adjust-spin'); spin.classList.remove('hidden'); try { await call('/api/inventory/adjust',{method:'POST', body: JSON.stringify({drug_id:id, delta, reason})}); toast('Adjusted','success'); await loadInventoryData(); fetchInventoryTransactions(); closeInventoryAdjust(); } catch(err){ console.error(err); document.getElementById('inv-adjust-error').textContent='Adjustment failed'; } finally { spin.classList.add('hidden'); } });
-      // override activateTab to ensure loadInventoryData only once until manual refresh
-      const origActivateInv=activateTab; let inventoryBooted=false;
-      activateTab=function(tab){ origActivateInv(tab); if(tab==='inventory'){ if(!inventoryBooted){ inventoryBooted=true; loadInventoryData(); fetchInventoryTransactions(); } }};
+  // override activateTab to ensure loadInventoryData only once until manual refresh
+  const origActivateInv=activateTab; let inventoryBooted=false;
+  activateTab=function(tab){ origActivateInv(tab); if(tab==='inventory'){ if(!inventoryBooted){ inventoryBooted=true; loadInventoryData(); fetchInventoryTransactions(); } } };
       // Enhance delivery quantity submission with client-side stock check
       const deliveryForm=document.getElementById('delivery-form');
       if(deliveryForm && !deliveryForm.__invHooked){
@@ -1526,9 +1588,26 @@ if(patientForm && !patientForm.__bound){
           }
         }, true);
       }
-      // When activating inventory tab, ensure data fetched
-      const origActivate=activateTab;
-      activateTab = function(tab){ origActivate(tab); if(tab==='inventory'){ loadInventorySummary(); renderInventory(); fetchInventoryTransactions(); } };
+      // Removed duplicate activateTab override that referenced missing loadInventorySummary()
+
+    // --- Improved boot sequence ---
+    async function boot(){
+      loadPrefs();
+      await checkAPI();
+      try {
+        await Promise.all([refreshPatients(), refreshDrugs()]);
+        await refreshDeliveries();
+      } catch(e){ console.error('Initial data load failed', e); }
+      loadStats();
+      renderAllPatients(); renderAllDrugs(); renderAllDeliveries();
+      renderAlerts();
+      renderAnalytics && renderAnalytics();
+      renderInventory(); // empty render before first tab open
+      fetchInventoryTransactions();
+      renderCalendar();
+      activateTab(loadPref('activeTab','dashboard'));
+    }
+    boot();
     </script>
   </body>
   </html>

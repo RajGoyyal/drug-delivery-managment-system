@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 import sqlite3
 from typing import Any, Dict, List, Optional
+import os, sys, traceback
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -18,11 +19,20 @@ DB_PATH = BASE_DIR / "data.db"
 
 
 def get_conn():
-    conn = sqlite3.connect(DB_PATH)
+    """Create a new SQLite connection configured for concurrent-ish access.
+
+    Adds WAL, busy timeout and foreign key enforcement. Failures to set pragmas are ignored.
+    """
+    conn = sqlite3.connect(DB_PATH, timeout=5)
     conn.row_factory = sqlite3.Row
+    try:
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
+        conn.execute("PRAGMA busy_timeout=3000;")
+        conn.execute("PRAGMA foreign_keys=ON;")
+    except Exception:
+        pass
     return conn
-
-
 def init_db() -> None:
     with get_conn() as conn:
         cur = conn.cursor()
@@ -82,6 +92,11 @@ def init_db() -> None:
                 cur.execute("ALTER TABLE deliveries ADD COLUMN stock_decremented INTEGER NOT NULL DEFAULT 0")
         except Exception:
             pass
+        # Helpful indexes
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_deliveries_status ON deliveries(status)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_deliveries_patient ON deliveries(patient_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_deliveries_drug ON deliveries(drug_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_deliveries_sched ON deliveries(scheduled_for)")
         conn.commit()
 
 
@@ -102,27 +117,35 @@ NOT_FOUND = {"detail": "not found"}
 
 @app.get("/api/health")
 def health():
-    return jsonify({"status": "ok"})
+    """Readiness + liveness endpoint; validates DB connects quickly."""
+    try:
+        with get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT 1")
+            patient_any = cur.execute("SELECT 1 FROM patients LIMIT 1").fetchone()
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 503
+    return jsonify({"status": "ok", "has_patients": bool(patient_any)})
 
 
 @app.get("/api/stats")
 def stats():
+    """Aggregate counts + low stock list (fixed previous connection scope bug)."""
     with get_conn() as conn:
         cur = conn.cursor()
-        patient_count = cur.execute("SELECT COUNT(*) c FROM patients").fetchone()[0]
-        drug_count = cur.execute("SELECT COUNT(*) c FROM drugs").fetchone()[0]
-        delivery_count = cur.execute("SELECT COUNT(*) c FROM deliveries").fetchone()[0]
-        status_rows = cur.execute("SELECT status, COUNT(*) c FROM deliveries GROUP BY status").fetchall()
-    low_stock_rows = cur.execute("SELECT id, name, stock, reorder_level FROM drugs WHERE stock <= reorder_level").fetchall()
-    low_stock = len(low_stock_rows)
+        patient_count = cur.execute("SELECT COUNT(*) FROM patients").fetchone()[0]
+        drug_count = cur.execute("SELECT COUNT(*) FROM drugs").fetchone()[0]
+        delivery_count = cur.execute("SELECT COUNT(*) FROM deliveries").fetchone()[0]
+        status_rows = cur.execute("SELECT status, COUNT(*) FROM deliveries GROUP BY status").fetchall()
+        low_stock_rows = cur.execute("SELECT id, name, stock, reorder_level FROM drugs WHERE stock <= reorder_level").fetchall()
     status_map = {r[0]: r[1] for r in status_rows}
     return jsonify({
         "patients": patient_count,
         "drugs": drug_count,
         "deliveries": delivery_count,
         "status_breakdown": status_map,
-    "low_stock_drugs": low_stock,
-    "low_stock_list": [ {"id": r[0], "name": r[1], "stock": r[2], "reorder_level": r[3]} for r in low_stock_rows ],
+        "low_stock_drugs": len(low_stock_rows),
+        "low_stock_list": [ {"id": r[0], "name": r[1], "stock": r[2], "reorder_level": r[3]} for r in low_stock_rows ],
     })
 
 
@@ -141,7 +164,7 @@ def create_patient():
             (name, age, condition),
         )
         pid = cur.lastrowid
-    row = cur.execute(SQL_PATIENT_BY_ID, (pid,)).fetchone()
+        row = cur.execute(SQL_PATIENT_BY_ID, (pid,)).fetchone()
     return jsonify(row_to_dict(row)), 201
 
 
@@ -289,13 +312,12 @@ def delete_delivery(delivery_id: int):
         cur = conn.cursor()
         # if reserved stock not consumed, restore
         row = cur.execute(SQL_DELIVERY_BY_ID, (delivery_id,)).fetchone()
-        if row:
-            if row["stock_decremented"] == 1 and row["quantity"]:
-                cur.execute("UPDATE drugs SET stock = stock + ? WHERE id=?", (row["quantity"], row["drug_id"]))
-                cur.execute(
-                    SQL_TXN_INSERT,
-                     (row["drug_id"], row["quantity"], f"delete delivery #{delivery_id}"),
-                )
+        if row and row["stock_decremented"] == 1 and row["quantity"]:
+            cur.execute("UPDATE drugs SET stock = stock + ? WHERE id=?", (row["quantity"], row["drug_id"]))
+            cur.execute(
+                SQL_TXN_INSERT,
+                 (row["drug_id"], row["quantity"], f"delete delivery #{delivery_id}"),
+            )
         cur.execute("DELETE FROM deliveries WHERE id=?", (delivery_id,))
     return ("", 204)
 
@@ -360,23 +382,28 @@ def root():
 
 @app.post("/api/seed")
 def seed():
-    payload = request.get_json(silent=True) or {}
-    patients = payload.get("patients") or [
-        {"name": "Alice", "age": 70, "condition": "Diabetes"},
-        {"name": "Bob", "age": 64, "condition": "Hypertension"},
-    ]
-    drugs = payload.get("drugs") or [
-        {"name": "Metformin", "dosage": "500mg", "stock": 120, "reorder_level": 40},
-        {"name": "Lisinopril", "dosage": "10mg", "stock": 80, "reorder_level": 30},
-    ]
+    raw = request.get_json(silent=True) or {}
+    payload: Dict[str, Any] = raw if isinstance(raw, dict) else {}
+    patients_in = payload.get("patients")
+    if not isinstance(patients_in, list):
+        patients_in = [
+            {"name": "Alice", "age": 70, "condition": "Diabetes"},
+            {"name": "Bob", "age": 64, "condition": "Hypertension"},
+        ]
+    drugs_in = payload.get("drugs")
+    if not isinstance(drugs_in, list):
+        drugs_in = [
+            {"name": "Metformin", "dosage": "500mg", "stock": 120, "reorder_level": 40},
+            {"name": "Lisinopril", "dosage": "10mg", "stock": 80, "reorder_level": 30},
+        ]
     with get_conn() as conn:
         cur = conn.cursor()
-        for p in patients:
+        for p in patients_in:
             cur.execute(
                 "INSERT INTO patients(name, age, condition) VALUES (?,?,?)",
                 (p.get("name"), p.get("age"), p.get("condition")),
             )
-        for d in drugs:
+        for d in drugs_in:
             cur.execute(
                 "INSERT INTO drugs(name, dosage, stock, reorder_level) VALUES(?,?,?,?)",
                 (d.get("name"), d.get("dosage"), int(d.get("stock") or 0), int(d.get("reorder_level") or 0)),
@@ -476,6 +503,15 @@ def inventory_summary():
             "days_supply": r[8],
         } for r in rows
     ])
+
+
+@app.errorhandler(Exception)
+def handle_unhandled(e: Exception):
+    """Global 500 handler to avoid silent failures causing frontend hangs."""
+    traceback.print_exc()
+    if os.environ.get("DEBUG_ERRORS"):
+        return jsonify({"detail": "internal error", "error": str(e), "trace": traceback.format_exc().splitlines()[-6:]}), 500
+    return jsonify({"detail": "internal error"}), 500
 
 
 if __name__ == "__main__":  # pragma: no cover
