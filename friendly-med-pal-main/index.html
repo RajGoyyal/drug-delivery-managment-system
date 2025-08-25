@@ -96,6 +96,11 @@
           </div>
         </div>
         <div id="stats" class="grid gap-4 sm:grid-cols-3"></div>
+        <!-- Added low stock dashboard container -->
+<div id="low-stock-dash" class="glass rounded-xl p-4 hidden">
+  <h3 class="text-sm font-medium mb-2">Low Stock</h3>
+  <ul id="low-stock-list" class="text-[11px] space-y-1"></ul>
+</div>
         <div class="grid gap-6 md:grid-cols-2">
           <div id="status-distribution" class="glass rounded-xl p-5 card-hover hidden">
             <div class="flex items-center justify-between mb-3"><h3 class="text-sm font-medium flex items-center gap-2">Delivery Status Distribution <span id="dist-total" class="text-[11px] font-normal text-slate-400"></span></h3><canvas id="dist-chart" width="120" height="120" class="w-16 h-16"></canvas></div>
@@ -302,6 +307,10 @@
                 <th data-sort="dosage" class="py-2 px-3 font-medium cursor-pointer">Dosage</th>
                 <th data-sort="stock" class="py-2 px-3 font-medium cursor-pointer">Stock</th>
                 <th data-sort="reorder_level" class="py-2 px-3 font-medium cursor-pointer">Reorder</th>
++                  <th class="px-3 py-2">Pend Qty</th>
++                  <th class="px-3 py-2">Daily Avg</th>
++                  <th class="px-3 py-2">Days Supply</th>
+                <th data-sort="status" class="py-2 px-3 font-medium cursor-pointer">Status</th>
               </tr>
             </thead>
             <tbody id="all-drugs-body" class="divide-y divide-slate-800"></tbody>
@@ -371,6 +380,63 @@
         <div id="all-deliveries-empty" class="text-[11px] text-slate-500"></div>
       </section>
 
+      <!-- Inventory View -->
+      <section data-view="inventory" class="hidden bg-slate-800 border border-slate-700 rounded-lg shadow p-5 space-y-5">
+        <div class="flex items-center gap-3">
+          <h2 class="font-semibold flex-1 flex items-center gap-2">Inventory <span id="inv-low-count" class="text-[11px] text-rose-300/80 hidden"></span></h2>
+          <button id="inv-refresh" class="text-[11px] px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600">Refresh</button>
+          <button id="inv-export" class="text-[11px] px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600">Export CSV</button>
+        </div>
+        <div class="grid md:grid-cols-3 gap-5">
+          <div class="md:col-span-2 flex flex-col gap-3">
+            <div class="flex items-center gap-2 text-[11px]">
+              <input id="inv-search" placeholder="Search" class="px-2 py-1 rounded bg-slate-700 border border-slate-600 flex-1">
+              <label class="flex items-center gap-1 select-none"><input type="checkbox" id="inv-low-toggle" class="accent-indigo-500"> <span>Low only</span></label>
+            </div>
+            <div class="overflow-auto soft-scroll border border-slate-700 rounded-lg">
+              <table class="w-full text-[12px]" id="inv-table">
+                <thead class="bg-slate-900/50 sticky top-0">
+                  <tr class="text-left text-slate-300">
+                    <th class="px-3 py-2">ID</th>
+                    <th class="px-3 py-2">Name</th>
+                    <th class="px-3 py-2">Dosage</th>
+                    <th class="px-3 py-2">Stock</th>
+                    <th class="px-3 py-2">Reorder</th>
+                    <th class="px-3 py-2">Pend Qty</th>
+                    <th class="px-3 py-2">Daily Avg</th>
+                    <th class="px-3 py-2">Days Supply</th>
+                    <th class="px-3 py-2">Status</th>
+                    <th class="px-3 py-2 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="inv-body" class="divide-y divide-slate-700/60"></tbody>
+              </table>
+              <div id="inv-empty" class="text-center text-[11px] text-slate-500 py-4 hidden">No drugs</div>
+            </div>
+          </div>
+          <div class="flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-medium">Transactions</h3>
+              <div class="flex items-center gap-2">
+                <select id="inv-trx-filter" class="text-[11px] bg-slate-700 border border-slate-600 rounded px-2 py-1">
+                  <option value="">All</option>
+                  <option value="reserve">Reserve</option>
+                  <option value="re-reserve">Re-Reserve</option>
+                  <option value="cancel">Cancel</option>
+                  <option value="delete">Delete</option>
+                  <option value="manual">Manual</option>
+                </select>
+                <button id="inv-trx-refresh" class="text-[11px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600">↻</button>
+              </div>
+            </div>
+            <div class="overflow-auto max-h-80 soft-scroll border border-slate-700 rounded-lg" id="inv-trx-wrap">
+              <ul id="inv-trx" class="text-[11px] divide-y divide-slate-700/60"></ul>
+              <div id="inv-trx-empty" class="text-center text-[11px] text-slate-500 py-3 hidden">No transactions</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <footer class="text-center text-xs text-slate-400 py-8">&copy; 2025 Friendly Med Pal 2.0</footer>
     </div>
 
@@ -398,7 +464,40 @@
     </div>
 
     <script>
-      const API_BASE = 'http://127.0.0.1:8000';
+      // Adaptive API base detection
+      let API_BASE = localStorage.getItem('apiBase') || 'http://127.0.0.1:8000';
+      async function probe(url){
+        try {
+          const r= await fetch(url+'/api/health',{method:'GET'});
+          if(r.ok) return true;
+        } catch(_err) {
+          return false;
+        }
+        return false; 
+      }
+      async function detectAPIBase(){
+        const overrideParam=new URLSearchParams(location.search).get('api');
+        if(overrideParam){ API_BASE=overrideParam; localStorage.setItem('apiBase', API_BASE); updateAPIIndicator('override '+API_BASE,'pending'); }
+        const candidates=[];
+        const origins=new Set();
+        if(location.protocol.startsWith('http')) origins.add(location.origin);
+        ['127.0.0.1','localhost'].forEach(h=>{ [8000,5000].forEach(p=> origins.add('http://'+h+':'+p)); });
+        for(const o of origins) candidates.push(o);
+        for(const c of candidates){ updateAPIIndicator('trying '+c,'pending'); if(await probe(c)){ API_BASE=c; localStorage.setItem('apiBase', API_BASE); updateAPIIndicator('connected '+API_BASE,'ok'); return; } }
+        updateAPIIndicator('unreachable','error');
+      }
+  function updateAPIIndicator(text, state){
+          const span=document.getElementById('api-indicator');
+          const dot=document.getElementById('api-dot');
+          if(!span||!dot) return;
+          if(text){ span.lastChild.textContent=' '+text; }
+          let cls='w-2 h-2 rounded-full ';
+          if(state==='ok') cls+='bg-green-500';
+          else if(state==='error') cls+='bg-red-500 animate-pulse';
+          else cls+='bg-slate-300 animate-pulse';
+          dot.className=cls;
+  }
+
       let globalLoading = 0;
       function setLoading(on, label='Working...'){
         globalLoading += on?1:-1; if(globalLoading<0) globalLoading=0;
@@ -419,18 +518,25 @@
         requestAnimationFrame(()=>{el.classList.add('fade-enter-active');});
         setTimeout(()=>{el.classList.remove('fade-enter-active'); el.style.opacity='0'; setTimeout(()=>el.remove(),250);}, 4000);
       }
-  function savePref(key,val){ try{ localStorage.setItem(key, String(val)); }catch{} }
-  function loadPref(key,def){ try{ const v=localStorage.getItem(key); return v!==null?v:def; }catch{ return def; } }
+      function savePref(key,val){ try{ localStorage.setItem(key, String(val)); }catch{} }
+      function loadPref(key,def){ try{ const v=localStorage.getItem(key); return v!==null?v:def; }catch{ return def; } }
 
       async function call(path, opts={}) {
-        const res = await fetch(API_BASE + path, {headers:{'Content-Type':'application/json'}, ...opts});
-        if(!res.ok){
-          let msg;
-          try { msg = (await res.json()).detail || await res.text(); } catch { msg = res.statusText; }
-          throw new Error(res.status + ' ' + msg);
-        }
-        return res.json();
-      }
+        const url = (path.startsWith('http')? path : API_BASE + path);
+        const controller = new AbortController();
+        const t=setTimeout(()=> controller.abort(), 8000);
+        let res;
+        try { res = await fetch(url, {headers:{'Content-Type':'application/json'}, signal:controller.signal, ...opts}); }
+        catch(e){ updateAPIIndicator('network error','error'); throw new Error('Network error: '+e.message); }
+        finally { clearTimeout(t); }
+         if(!res.ok){
+           let msg;
+           try { msg = (await res.json()).detail || await res.text(); } catch { msg = res.statusText; }
+           throw new Error(res.status + ' ' + msg);
+         }
+        updateAPIIndicator('', 'ok');
+         return res.json();
+       }
 
       function stat(label, value){
         const node = document.getElementById('tpl-stat').content.cloneNode(true);
@@ -440,31 +546,28 @@
       }
 
       async function loadStats(){
-        // Try dedicated stats endpoint first; fall back to manual aggregation.
-        const wrap = document.getElementById('stats');
-        wrap.innerHTML='';
         try {
-          const s = await call('/api/stats');
-          wrap.append(stat('Patients', s.patients ?? s.total_patients ?? '—'));
-          wrap.append(stat('Drugs', s.drugs ?? s.total_drugs ?? '—'));
-          wrap.append(stat('Deliveries', s.deliveries ?? s.total_deliveries ?? '—'));
-          if(s.status_breakdown){
-            renderStatusDistribution(s.status_breakdown);
-          }
-        } catch {
-          try {
-            const [patients, drugs, deliveries] = await Promise.all([
-              call('/api/patients'), call('/api/drugs'), call('/api/deliveries')
-            ]);
-            wrap.append(stat('Patients', patients.length));
-            wrap.append(stat('Drugs', drugs.length));
-            wrap.append(stat('Pending', deliveries.filter(d=>d.status==='pending').length));
-            renderStatusDistribution(deliveries.reduce((acc,d)=>{acc[d.status]=(acc[d.status]||0)+1;return acc;},{}));
-          } catch(err){
-            console.error('Stats fallback fetch failed', err);
-            wrap.innerHTML='<div class="text-xs text-red-500">Failed to load stats</div>';
-          }
-        }
+          const data= await call('/api/stats');
+          document.querySelector('[data-count="patients"]').textContent=data.patients;
+          document.querySelector('[data-count="drugs"]').textContent=data.drugs;
+          document.querySelector('[data-count="deliveries"]').textContent=data.deliveries;
+          const statsBox=document.getElementById('stats');
+          statsBox.innerHTML='';
+          const items=[
+            {label:'Patients', value:data.patients},
+            {label:'Drugs', value:data.drugs},
+            {label:'Deliveries', value:data.deliveries},
+            {label:'Low Stock', value:data.low_stock_drugs}
+          ];
+          items.forEach(it=>{ const card=document.createElement('div'); card.className='glass rounded-xl p-4 flex flex-col gap-1 card-hover'; card.innerHTML=`<span class="text-[11px] uppercase tracking-wide text-slate-400">${it.label}</span><span class="text-xl font-semibold">${it.value}</span>`; statsBox.append(card); });
+          // low stock list
+          const lowWrap=document.getElementById('low-stock-dash');
+          const list=document.getElementById('low-stock-list');
+          if(data.low_stock_list && data.low_stock_list.length){
+            lowWrap.classList.remove('hidden');
+            list.innerHTML = data.low_stock_list.slice(0,8).map(r=> `<li class='flex justify-between'><span class='truncate max-w-[140px]'>${escapeHTML(r.name)}</span><span class='text-rose-300 ml-2 font-mono'>${r.stock}/${r.reorder_level}</span></li>`).join('');
+          } else { lowWrap.classList.add('hidden'); }
+        } catch(e){ console.error('stats', e); }
       }
 
       function renderStatusDistribution(breakdown){
@@ -709,15 +812,30 @@
 
       document.getElementById('patient-form').addEventListener('submit', async e=>{
         e.preventDefault();
-        const fd = new FormData(e.target);
-        const body = Object.fromEntries(fd.entries());
-        body.age = body.age? Number(body.age): null;
+        const fd=new FormData(patientForm);
+        const body=Object.fromEntries(fd.entries());
         const btn=document.getElementById('patient-submit'); const sp=document.getElementById('patient-spinner'); const err=document.getElementById('patient-error');
         err.textContent=''; btn.disabled=true; sp.classList.remove('hidden');
-        try { await call('/api/patients', {method:'POST', body: JSON.stringify(body)}); e.target.reset(); toast('Patient added','success'); refreshPatients(); loadStats(); }
+        try { await call('/api/patients', {method:'POST', body: JSON.stringify(body)}); patientForm.reset(); toast('Patient added','success'); refreshPatients(); loadStats(); }
         catch(ex){ err.textContent=ex.message; toast('Add patient failed','error'); }
         finally { btn.disabled=false; sp.classList.add('hidden'); }
       });
+
+// Repair patient form listener
+const patientForm=document.getElementById('patient-form');
+if(patientForm && !patientForm.__bound){
+  patientForm.__bound=true;
+  patientForm.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const fd=new FormData(patientForm);
+    const body=Object.fromEntries(fd.entries());
+    const btn=document.getElementById('patient-submit'); const sp=document.getElementById('patient-spinner'); const err=document.getElementById('patient-error');
+    err.textContent=''; btn.disabled=true; sp.classList.remove('hidden');
+    try { await call('/api/patients', {method:'POST', body: JSON.stringify(body)}); patientForm.reset(); toast('Patient added','success'); refreshPatients(); loadStats(); }
+    catch(ex){ err.textContent=ex.message; toast('Add patient failed','error'); }
+    finally { btn.disabled=false; sp.classList.add('hidden'); }
+  });
+}
 
       document.getElementById('drug-form').addEventListener('submit', async e=>{
         e.preventDefault();
@@ -819,23 +937,18 @@
     tabButtons.forEach(b=> b.addEventListener('click', ()=> activateTab(b.getAttribute('data-tab'))));
     activateTab(loadPref('activeTab','dashboard'));
     async function boot(){
-        await checkAPI();
-        buildDeliveryStatusFilters();
-        try {
-          await Promise.all([refreshPatients(), refreshDrugs()]);
-          await refreshDeliveries();
-          await loadStats();
-          renderAnalytics();
-          initCalendar();
-          renderCalendar();
-          renderAlerts();
-          renderAllPatients();
-          renderAllDrugs();
-          renderAllDeliveries();
-        } catch(err){
-          console.error('Initial boot failed', err);
-          toast('Initial load failed','error');
-        }
+        loadPrefs();
+        checkAPI();
+        refreshPatients();
+        refreshDrugs();
+        refreshDeliveries();
+        loadStats();
+        renderAllPatients(); renderAllDrugs(); renderAllDeliveries();
+        renderAlerts();
+        renderAnalytics();
+        renderInventory(); fetchInventoryTransactions();
+        renderCalendar();
+        activateTab('dashboard');
       }
       document.getElementById('seed-btn').addEventListener('click', async ()=>{
         if(!confirmAction('Insert demo data? This may duplicate existing records.')) return;
@@ -847,9 +960,9 @@
       });
       // CSV Export helpers
   function toCSV(rows){ if(!rows.length){ return ''; } const headers=Object.keys(rows[0]); const esc=v=> '"'+String(v??'').replace(/"/g,'""')+'"'; return [headers.join(','), ...rows.map(r=>headers.map(h=>esc(r[h])).join(','))].join('\n'); }
-      function downloadFile(name, content){ const blob=new Blob([content],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
-      document.getElementById('export-patients').addEventListener('click', ()=>{ if(!window.__patients){ toast('No data','error'); return; } downloadFile('patients.csv', toCSV(window.__patients)); });
-      document.getElementById('export-drugs').addEventListener('click', ()=>{ if(!window.__drugs){ toast('No data','error'); return; } downloadFile('drugs.csv', toCSV(window.__drugs)); });
+  function downloadFile(name, content){ const blob=new Blob([content],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
+  document.getElementById('export-patients').addEventListener('click', ()=>{ if(!window.__patients){ toast('No data','error'); return; } downloadFile('patients.csv', toCSV(window.__patients)); });
+  document.getElementById('export-drugs').addEventListener('click', ()=>{ if(!window.__drugs){ toast('No data','error'); return; } downloadFile('drugs.csv', toCSV(window.__drugs)); });
   document.getElementById('export-deliveries').addEventListener('click', ()=>{ if(!window.__deliveries){ toast('No data','error'); return; } downloadFile('deliveries.csv', toCSV(window.__deliveries)); });
   document.getElementById('toggle-overdue').addEventListener('click', (e)=>{ overdueOnly=!overdueOnly; e.target.classList.toggle('bg-red-600/40', overdueOnly); e.target.classList.toggle('text-red-300', overdueOnly); refreshDeliveries(); });
   document.getElementById('export-all').addEventListener('click', ()=>{ const parts=[]; if(window.__patients){ parts.push({name:'patients', rows:window.__patients}); } if(window.__drugs){ parts.push({name:'drugs', rows:window.__drugs}); } if(window.__deliveries){ parts.push({name:'deliveries', rows:window.__deliveries}); } if(!parts.length){ toast('No data','error'); return; } parts.forEach(p=> downloadFile(p.name+'.csv', toCSV(p.rows))); });
@@ -1152,86 +1265,82 @@
   function updateOnline(){ const b=document.getElementById('offline-banner'); if(navigator.onLine){ b.classList.add('hidden'); } else { b.classList.remove('hidden'); } }
   window.addEventListener('online', updateOnline); window.addEventListener('offline', updateOnline); updateOnline();
 
-      // Analytics rendering
-      function aggregateDeliveriesByDay(days=14){
-        const map=new Map();
-        (window.__deliveries||[]).forEach(d=>{ const day=d.scheduled_for? d.scheduled_for.substring(0,10):''; if(!day){ return; } const obj=map.get(day)||{pending:0,delivered:0,missed:0,cancelled:0,total:0}; obj[d.status]=(obj[d.status]||0)+1; obj.total++; map.set(day,obj); });
-        const allDays=[...map.keys()].sort();
-        const recent=allDays.slice(-days);
-        return recent.map(day=>({day, ...(map.get(day))}));
+      // INVENTORY FEATURE
+      async function renderInventory(){
+        const drugs = window.__drugs||[];
+        const search=(document.getElementById('inv-search').value||'').toLowerCase();
+        const lowOnly=document.getElementById('inv-low-toggle').checked;
+        const body=document.getElementById('inv-body'); const empty=document.getElementById('inv-empty'); const lowCountEl=document.getElementById('inv-low-count');
+        let rows=drugs.slice();
+        let lowCount=0;
+        rows.forEach(d=>{ if((d.stock||0) <= (d.reorder_level||0)){ lowCount++; } });
+        if(search){ rows=rows.filter(d=> d.name.toLowerCase().includes(search) || (d.dosage||'').toLowerCase().includes(search) || String(d.id)===search); }
+        if(lowOnly){ rows=rows.filter(d=> (d.stock||0) <= (d.reorder_level||0)); }
+        rows.sort((a,b)=> a.name.localeCompare(b.name));
+        body.innerHTML= rows.map(d=>{
+          const low=(d.stock||0) <= (d.reorder_level||0);
+          const badge = low? "<span class='text-[10px] px-1.5 py-0.5 rounded bg-rose-600/30 text-rose-300 border border-rose-500/30'>Low</span>" : "<span class='text-[10px] px-1.5 py-0.5 rounded bg-emerald-600/20 text-emerald-300 border border-emerald-500/30'>OK</span>";
+          return `<tr class='hover:bg-slate-700/40 ${low? 'bg-rose-950/20':''}'>
+            <td class='px-3 py-2 text-slate-400 font-medium'>${d.id}</td>
+            <td class='px-3 py-2'>${escapeHTML(d.name)}</td>
+            <td class='px-3 py-2 text-slate-400'>${escapeHTML(d.dosage||'')}</td>
+            <td class='px-3 py-2 ${low? 'text-rose-300 font-medium':'text-slate-300'}'>${d.stock??0}</td>
+            <td class='px-3 py-2 text-slate-400'>${d.reorder_level??0}</td>
+            <td class='px-3 py-2'>${badge}</td>
+            <td class='px-3 py-2 text-right'>
+              <button class='text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600' data-inv-adjust='${d.id}'>Adjust</button>
+            </td>
+          </tr>`;
+        }).join('');
+        empty.classList.toggle('hidden', !!rows.length);
+        lowCountEl.textContent= lowCount? lowCount + ' low stock' : '';
+        lowCountEl.classList.toggle('hidden', !lowCount);
       }
-      function renderAnalytics(){
-        const data=aggregateDeliveriesByDay(14); const rangeEl=document.getElementById('analytics-range'); if(rangeEl){ if(data.length){ rangeEl.textContent = data[0].day+' → '+data[data.length-1].day; } else { rangeEl.textContent='(no data)'; } }
-        // line chart
-        const points=data.map((d,i)=>({x:i,y:d.total})); drawLineChart('daily-line', points);
-        // status mix
-        const statusBox=document.getElementById('analytics-status'); if(statusBox){
-          const sum={pending:0,delivered:0,missed:0,cancelled:0}; data.forEach(d=>{ ['pending','delivered','missed','cancelled'].forEach(k=> sum[k]+= d[k]||0); });
-          const total=Object.values(sum).reduce((a,b)=>a+b,0);
-          if(!total){ statusBox.innerHTML='<div class="text-slate-500">No recent data</div>'; } else {
-            statusBox.innerHTML=['pending','delivered','missed','cancelled'].filter(k=>sum[k]).map(k=>{ const pct=((sum[k]/total)*100).toFixed(1); return `<div class='flex justify-between'><span class='capitalize'>${k}</span><span>${sum[k]} • ${pct}%</span></div>`; }).join('');
-          }
-        }
-        const top=document.getElementById('top-patients'); if(top){
-          const counts={}; (window.__deliveries||[]).forEach(d=>{ counts[d.patient_id]=(counts[d.patient_id]||0)+1; });
-          const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,5);
-          top.innerHTML= sorted.length? sorted.map(([pid,c])=>{ const p=(window.__patients||[]).find(pp=>pp.id==pid); return `<li>${p? p.name: 'Patient '+pid} – <span class='text-slate-400'>${c}</span></li>`; }).join('') : '<li class="list-none text-slate-500">No data</li>';
-        }
+      async function fetchInventoryTransactions(){
+        try { const trx= await call('/api/inventory/transactions?limit=300'); window.__inv_trx = trx; renderInventoryTransactions(); } catch(e){ console.error('trx load', e); }
       }
-      document.getElementById('analytics-refresh').addEventListener('click', ()=> renderAnalytics());
-
-      // Calendar
-      let calDate = new Date();
-      function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(),1); }
-      function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1,0); }
-      function fmtDate(d){ return d.toISOString().substring(0,10); }
-      function initCalendar(){ document.getElementById('cal-prev').addEventListener('click', ()=>{ calDate=new Date(calDate.getFullYear(), calDate.getMonth()-1,1); renderCalendar(); }); document.getElementById('cal-next').addEventListener('click', ()=>{ calDate=new Date(calDate.getFullYear(), calDate.getMonth()+1,1); renderCalendar(); }); document.getElementById('cal-today').addEventListener('click', ()=>{ calDate=new Date(); renderCalendar(); }); }
-      function renderCalendar(){
-        const grid=document.getElementById('cal-grid'); if(!grid){ return; }
-        const title=document.getElementById('cal-title');
-        const monthStart=startOfMonth(calDate); const monthEnd=endOfMonth(calDate);
-        title.textContent= calDate.toLocaleString(undefined,{month:'long', year:'numeric'});
-        const firstDow=monthStart.getDay(); const days=monthEnd.getDate();
-        grid.innerHTML='';
-        const deliveries=(window.__deliveries||[]); const dailyMap={};
-        deliveries.forEach(d=>{ const day=d.scheduled_for? d.scheduled_for.substring(0,10):''; if(day){ dailyMap[day]=(dailyMap[day]||0)+1; } });
-        for(let i=0;i<firstDow;i++){ const pad=document.createElement('div'); pad.className='opacity-0'; grid.append(pad); }
-        const todayStr=fmtDate(new Date());
-        for(let day=1; day<=days; day++){
-          const dateStr= fmtDate(new Date(calDate.getFullYear(), calDate.getMonth(), day));
-          const btn=document.createElement('button'); const count=dailyMap[dateStr]||0;
-          btn.className='rounded-lg border border-slate-700 bg-slate-900/40 hover:bg-slate-700 flex flex-col items-center justify-center py-2 gap-1 relative';
-          if(dateStr===todayStr){ btn.classList.add('ring-2','ring-indigo-500'); }
-          let badge='';
-          if(count){ badge = "<span class='text-[10px] px-1 rounded bg-indigo-600/30 text-indigo-300'>"+count+"</span>"; }
-          btn.innerHTML = "<span class='text-[11px] font-medium'>"+day+"</span>"+badge;
-          btn.onclick=()=> selectCalendarDay(dateStr);
-          grid.append(btn);
-        }
+      function renderInventoryTransactions(){
+        const list=document.getElementById('inv-trx'); if(!list){ return; }
+        const filter=document.getElementById('inv-trx-filter').value;
+        const empty=document.getElementById('inv-trx-empty');
+        let rows=(window.__inv_trx||[]).slice();
+        if(filter){ const f=filter.toLowerCase(); rows=rows.filter(r=> (r.reason||'').toLowerCase().includes(f)); }
+        if(!rows.length){ list.innerHTML=''; empty.classList.remove('hidden'); return; } else { empty.classList.add('hidden'); }
+        list.innerHTML= rows.map(r=>{
+          const sign=r.delta>0? '+' : '';
+          const color=r.delta>0? 'text-emerald-300' : 'text-rose-300';
+          return `<li class='px-2 py-1 flex justify-between items-center hover:bg-slate-700/40'>
+            <span class='text-slate-400'>#${r.id}</span>
+            <span class='flex-1 px-2 truncate'>${escapeHTML(r.reason||'—')}</span>
+            <span class='${color} font-mono text-[11px]'>${sign}${r.delta}</span>
+          </li>`;
+        }).join('');
       }
-      function selectCalendarDay(dateStr){ const list=document.getElementById('cal-day-list'); if(!list){ return; } const deliveries=(window.__deliveries||[]).filter(d=> d.scheduled_for && d.scheduled_for.startsWith(dateStr)); list.innerHTML= deliveries.length? deliveries.map(d=> `<div class='border border-slate-700 rounded p-2 flex justify-between'><span class='font-medium'>#${d.id}</span><span>${statusBadge(d.status)}</span><span class='text-slate-400'>${d.scheduled_for.substring(11,16)||''}</span></div>`).join('') : `<div class='text-slate-500'>No deliveries on ${dateStr}</div>`; }
-
-      // Alerts (overdue & missed)
-      function renderAlerts(){ const list=document.getElementById('alert-list'); if(!list){ return; } const now=Date.now(); const deliveries=(window.__deliveries||[]); const alerts=deliveries.filter(d=> (d.status==='pending' && new Date(d.scheduled_for).getTime()<now) || d.status==='missed'); list.innerHTML= alerts.length? alerts.map(d=> `<div class='border border-red-600/40 bg-red-600/10 rounded p-2 flex flex-col gap-1'><div class='flex justify-between text-[11px]'><span class='font-medium'>#${d.id}</span><span>${statusBadge(d.status)}</span></div><div class='text-[10px] text-slate-400'>Scheduled: ${d.scheduled_for}</div></div>`).join('') : '<div class="text-slate-500 text-[11px]">No alerts 🎉</div>'; const c=document.getElementById('alert-count'); if(c){ c.textContent= alerts.length+' issue'+(alerts.length!==1?'s':''); } }
-
-      // Keyboard shortcuts
-      document.addEventListener('keydown', e=>{
-        if(e.key==='/' && document.activeElement!==document.getElementById('global-search')){ e.preventDefault(); const g=document.getElementById('global-search'); if(g){ g.focus(); g.select(); } }
-        if(e.altKey){ const map={1:'dashboard',2:'patients',3:'drugs',4:'deliveries',5:'history',6:'analytics',7:'calendar',8:'alerts',9:'settings'}; const tab=map[e.key]; if(tab){ e.preventDefault(); activateTab(tab); } }
-        if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='e'){ e.preventDefault(); document.getElementById('export-all').click(); }
-        if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='s'){ e.preventDefault(); document.getElementById('seed-btn').click(); }
-        if(e.key==='Escape'){ const modal=document.getElementById('patient-modal'); if(modal && !modal.classList.contains('hidden')){ document.getElementById('pm-close').click(); } }
+      document.addEventListener('input', e=>{ if(e.target.id==='inv-search'){ renderInventory(); } });
+      document.addEventListener('change', e=>{ if(e.target.id==='inv-low-toggle'){ renderInventory(); } if(e.target.id==='inv-trx-filter'){ renderInventoryTransactions(); } });
+      document.addEventListener('click', async e=>{
+        if(e.target.id==='inv-refresh'){ await refreshDrugs(); renderInventory(); loadStats(); }
+        if(e.target.id==='inv-trx-refresh'){ fetchInventoryTransactions(); }
+        if(e.target.id==='inv-export'){ const rows=(window.__drugs||[]).map(d=>({id:d.id,name:d.name,dosage:d.dosage,stock:d.stock,reorder_level:d.reorder_level,status:(d.stock||0)<= (d.reorder_level||0)?'LOW':'OK'})); if(!rows.length){ toast('No data','error'); return; } downloadFile('inventory.csv', toCSV(rows)); }
+        if(e.target.matches('button[data-inv-adjust]')){ const id=Number(e.target.getAttribute('data-inv-adjust')); const deltaStr=prompt('Adjust stock by (e.g. 25 or -10)'); if(deltaStr===null){ return; } const delta=parseInt(deltaStr,10); if(isNaN(delta)){ alert('Invalid number'); return; } const reason=prompt('Reason','manual'); try { await call('/api/inventory/adjust',{method:'POST', body: JSON.stringify({drug_id:id, delta, reason})}); toast('Adjusted','success'); await refreshDrugs(); renderInventory(); loadStats(); fetchInventoryTransactions(); } catch(err){ console.error(err); toast('Adjust failed','error'); } }
       });
-
-      // Settings form
-      document.getElementById('set-refresh').value= refreshInterval;
-      document.getElementById('set-activity-display').value= ACTIVITY_DISPLAY_LIMIT;
-      document.getElementById('set-activity-store').value= ACTIVITY_STORE_LIMIT;
-      document.getElementById('settings-form').addEventListener('submit', e=>{ e.preventDefault(); const r=Number(document.getElementById('set-refresh').value)||10; const ad=Number(document.getElementById('set-activity-display').value)||50; const as=Number(document.getElementById('set-activity-store').value)||200; refreshInterval=Math.min(Math.max(r,5),300); countdown=refreshInterval; ACTIVITY_DISPLAY_LIMIT=Math.min(Math.max(ad,10),200); ACTIVITY_STORE_LIMIT=Math.min(Math.max(as,50),1000); savePref('refreshInterval', refreshInterval); savePref('activityDisplayLimit', ACTIVITY_DISPLAY_LIMIT); savePref('activityStoreLimit', ACTIVITY_STORE_LIMIT); const stat=document.getElementById('settings-status'); stat.textContent='Saved'; setTimeout(()=> stat.textContent='',2000); });
-
-      loadActivity();
-      boot();
-      setInterval(checkAPI, 5000);
+      // Enhance delivery quantity submission with client-side stock check
+      const deliveryForm=document.getElementById('delivery-form');
+      if(deliveryForm && !deliveryForm.__invHooked){
+        deliveryForm.__invHooked=true;
+        deliveryForm.addEventListener('submit', e=>{
+          const qInput=deliveryForm.querySelector('input[name=quantity]');
+          const drugSel=deliveryForm.querySelector('select[name=drug_id]');
+          if(qInput && drugSel){
+            const qty=Number(qInput.value)||1; const drugId=Number(drugSel.value);
+            const drug=(window.__drugs||[]).find(d=> d.id==drugId);
+            if(drug && (drug.stock||0) < qty){ e.preventDefault(); toast('Insufficient stock ('+ (drug.stock||0)+')','error'); qInput.focus(); return false; }
+          }
+        }, true);
+      }
+      // When activating inventory tab, ensure data fetched
+      const origActivate=activateTab;
+      activateTab = function(tab){ origActivate(tab); if(tab==='inventory'){ loadInventorySummary(); renderInventory(); fetchInventoryTransactions(); } };
     </script>
   </body>
   </html>

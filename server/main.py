@@ -96,6 +96,7 @@ def row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
 SQL_PATIENT_BY_ID = "SELECT * FROM patients WHERE id=?"
 SQL_DRUG_BY_ID = "SELECT * FROM drugs WHERE id=?"
 SQL_DELIVERY_BY_ID = "SELECT * FROM deliveries WHERE id=?"
+SQL_TXN_INSERT = "INSERT INTO inventory_transactions(drug_id, delta, reason) VALUES (?,?,?)"
 NOT_FOUND = {"detail": "not found"}
 
 
@@ -112,14 +113,16 @@ def stats():
         drug_count = cur.execute("SELECT COUNT(*) c FROM drugs").fetchone()[0]
         delivery_count = cur.execute("SELECT COUNT(*) c FROM deliveries").fetchone()[0]
         status_rows = cur.execute("SELECT status, COUNT(*) c FROM deliveries GROUP BY status").fetchall()
-        low_stock = cur.execute("SELECT COUNT(*) FROM drugs WHERE stock <= reorder_level").fetchone()[0]
+    low_stock_rows = cur.execute("SELECT id, name, stock, reorder_level FROM drugs WHERE stock <= reorder_level").fetchall()
+    low_stock = len(low_stock_rows)
     status_map = {r[0]: r[1] for r in status_rows}
     return jsonify({
         "patients": patient_count,
         "drugs": drug_count,
         "deliveries": delivery_count,
         "status_breakdown": status_map,
-        "low_stock_drugs": low_stock,
+    "low_stock_drugs": low_stock,
+    "low_stock_list": [ {"id": r[0], "name": r[1], "stock": r[2], "reorder_level": r[3]} for r in low_stock_rows ],
     })
 
 
@@ -264,8 +267,8 @@ def create_delivery():
         did = cur.lastrowid
         # Log inventory transaction
         cur.execute(
-            "INSERT INTO inventory_transactions(drug_id, delta, reason) VALUES (?,?,?)",
-            (data["drug_id"], -quantity, f"reserve delivery #{did}"),
+            SQL_TXN_INSERT,
+             (data["drug_id"], -quantity, f"reserve delivery #{did}"),
         )
     row = cur.execute(SQL_DELIVERY_BY_ID, (did,)).fetchone()
     return jsonify(row_to_dict(row)), 201
@@ -290,8 +293,8 @@ def delete_delivery(delivery_id: int):
             if row["stock_decremented"] == 1 and row["quantity"]:
                 cur.execute("UPDATE drugs SET stock = stock + ? WHERE id=?", (row["quantity"], row["drug_id"]))
                 cur.execute(
-                    "INSERT INTO inventory_transactions(drug_id, delta, reason) VALUES (?,?,?)",
-                    (row["drug_id"], row["quantity"], f"delete delivery #{delivery_id}"),
+                    SQL_TXN_INSERT,
+                     (row["drug_id"], row["quantity"], f"delete delivery #{delivery_id}"),
                 )
         cur.execute("DELETE FROM deliveries WHERE id=?", (delivery_id,))
     return ("", 204)
@@ -316,8 +319,8 @@ def update_delivery_status(delivery_id: int):
         if status == "cancelled" and stock_dec:
             cur.execute("UPDATE drugs SET stock = stock + ? WHERE id=?", (quantity, drug_id))
             cur.execute(
-                "INSERT INTO inventory_transactions(drug_id, delta, reason) VALUES (?,?,?)",
-                (drug_id, quantity, f"cancel delivery #{delivery_id}"),
+                SQL_TXN_INSERT,
+                 (drug_id, quantity, f"cancel delivery #{delivery_id}"),
             )
             cur.execute("UPDATE deliveries SET stock_decremented=0 WHERE id=?", (delivery_id,))
         # If moving from cancelled back to pending/delivered/missed ensure stock available and reserve again if not already
@@ -329,8 +332,8 @@ def update_delivery_status(delivery_id: int):
                 return jsonify({"detail": "insufficient stock"}), 400
             cur.execute("UPDATE drugs SET stock = stock - ? WHERE id=?", (quantity, drug_id))
             cur.execute(
-                "INSERT INTO inventory_transactions(drug_id, delta, reason) VALUES (?,?,?)",
-                (drug_id, -quantity, f"re-reserve delivery #{delivery_id}"),
+                SQL_TXN_INSERT,
+                 (drug_id, -quantity, f"re-reserve delivery #{delivery_id}"),
             )
             cur.execute("UPDATE deliveries SET stock_decremented=1 WHERE id=?", (delivery_id,))
         cur.execute("UPDATE deliveries SET status=? WHERE id=?", (status, delivery_id))
@@ -405,9 +408,9 @@ def inventory_adjust():
             new_stock = 0
         cur.execute("UPDATE drugs SET stock=? WHERE id=?", (new_stock, drug_id))
         cur.execute(
-            "INSERT INTO inventory_transactions(drug_id, delta, reason) VALUES (?,?,?)",
-            (drug_id, delta, reason),
-        )
+            SQL_TXN_INSERT,
+             (drug_id, delta, reason),
+         )
         row = cur.execute(SQL_DRUG_BY_ID, (drug_id,)).fetchone()
     return jsonify(row_to_dict(row))
 
@@ -427,6 +430,52 @@ def inventory_transactions():
                 "SELECT * FROM inventory_transactions ORDER BY id DESC LIMIT ?", (limit,)
             ).fetchall()
     return jsonify([row_to_dict(r) for r in rows])
+
+
+@app.get("/api/inventory/summary")
+def inventory_summary():
+    """Return per‑drug inventory metrics including pending quantities and usage velocity."""
+    with get_conn() as conn:
+        cur = conn.cursor()
+        rows = cur.execute(
+            """
+            WITH recent AS (
+                SELECT drug_id, SUM(quantity) qty
+                FROM deliveries
+                WHERE scheduled_for >= datetime('now','-14 day')
+                GROUP BY drug_id
+            ),
+            pending AS (
+                SELECT drug_id,
+                       COALESCE(SUM(CASE WHEN status='pending' THEN quantity END),0) pending_qty,
+                       COALESCE(COUNT(CASE WHEN status='pending' THEN 1 END),0) pending_count
+                FROM deliveries
+                GROUP BY drug_id
+            )
+            SELECT d.id, d.name, d.dosage, d.stock, d.reorder_level,
+                   COALESCE(p.pending_qty,0) AS pending_quantity,
+                   COALESCE(p.pending_count,0) AS pending_deliveries,
+                   ROUND(COALESCE(r.qty,0)/14.0,2) AS daily_avg,
+                   CASE WHEN COALESCE(r.qty,0) > 0 THEN ROUND(d.stock / (COALESCE(r.qty,0)/14.0),1) ELSE NULL END AS days_supply
+            FROM drugs d
+            LEFT JOIN pending p ON p.drug_id = d.id
+            LEFT JOIN recent r ON r.drug_id = d.id
+            ORDER BY d.name
+            """
+        ).fetchall()
+    return jsonify([
+        {
+            "id": r[0],
+            "name": r[1],
+            "dosage": r[2],
+            "stock": r[3],
+            "reorder_level": r[4],
+            "pending_quantity": r[5],
+            "pending_deliveries": r[6],
+            "daily_avg": r[7],
+            "days_supply": r[8],
+        } for r in rows
+    ])
 
 
 if __name__ == "__main__":  # pragma: no cover
