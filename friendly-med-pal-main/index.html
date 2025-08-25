@@ -48,7 +48,8 @@
     </style>
   </head>
   <body class="min-h-screen bg-slate-900 text-slate-100 transition-colors">
-    <div class="max-w-6xl mx-auto p-6 space-y-10">
+  <div id="offline-banner" class="hidden fixed top-0 inset-x-0 z-50 bg-red-600 text-white text-center text-xs py-1 font-medium tracking-wide">OFFLINE – changes may fail to sync</div>
+  <div class="max-w-6xl mx-auto p-6 space-y-10 pt-10">
   <header class="flex flex-col gap-4 pb-2 border-b border-slate-700/60">
         <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
           <div>
@@ -100,7 +101,7 @@
             <div id="dist-bars" class="space-y-3"></div>
           </div>
           <div id="activity-panel" class="glass rounded-xl p-5 flex flex-col card-hover">
-            <div class="flex items-center mb-3"><h3 class="text-sm font-medium flex-1">Recent Activity</h3><button id="clear-activity" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600">Clear</button></div>
+            <div class="flex items-center mb-3 gap-2"><h3 class="text-sm font-medium flex-1">Recent Activity</h3><input id="activity-search" placeholder="Filter" class="text-[11px] px-2 py-1 rounded bg-slate-700 border border-slate-600 w-32" /><button id="clear-activity" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600">Clear</button></div>
             <div id="activity-empty" class="text-[11px] text-slate-500">No activity yet. Actions you take will appear here.</div>
             <ul id="activity-log" class="space-y-2 text-[11px] overflow-auto max-h-64 soft-scroll"></ul>
           </div>
@@ -319,12 +320,26 @@
             <select id="all-deliveries-pagesize" class="bg-slate-900/40 border border-slate-600 rounded px-2 py-1 text-[10px]">
               <option>25</option><option>50</option><option>100</option>
             </select>
+            <input type="date" id="deliveries-date-from" class="bg-slate-900/40 border border-slate-600 rounded px-2 py-1 text-[10px]" title="From date" />
+            <input type="date" id="deliveries-date-to" class="bg-slate-900/40 border border-slate-600 rounded px-2 py-1 text-[10px]" title="To date" />
+            <div class="relative" id="delivery-columns-wrap">
+              <button id="delivery-columns-btn" class="text-[10px] px-2 py-1 rounded border border-slate-600 bg-slate-700 hover:bg-slate-600">Columns</button>
+              <div id="delivery-columns-menu" class="hidden absolute right-0 mt-1 w-40 bg-slate-800 border border-slate-700 rounded shadow-lg p-2 text-[11px] space-y-1">
+                <label class="flex items-center gap-2"><input type="checkbox" data-col="patient" checked class="accent-indigo-500"/> Patient</label>
+                <label class="flex items-center gap-2"><input type="checkbox" data-col="drug" checked class="accent-indigo-500"/> Drug</label>
+                <label class="flex items-center gap-2"><input type="checkbox" data-col="scheduled_for" checked class="accent-indigo-500"/> Scheduled</label>
+                <label class="flex items-center gap-2"><input type="checkbox" data-col="status" checked class="accent-indigo-500"/> Status</label>
+                <label class="flex items-center gap-2"><input type="checkbox" data-col="notes" checked class="accent-indigo-500"/> Notes</label>
+              </div>
+            </div>
+            <button id="export-json" class="text-[10px] px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white" title="Download JSON backup">JSON</button>
           </div>
         </div>
         <div class="overflow-auto soft-scroll max-h-[60vh] rounded-lg border border-slate-700/70">
           <table class="w-full text-left text-[11px]" id="tbl-all-deliveries">
             <thead class="bg-slate-800/60 sticky top-0 backdrop-blur select-none">
               <tr class="text-slate-400">
+                <th class="py-2 px-3 font-medium"><input type="checkbox" id="deliveries-select-all" class="accent-indigo-500" title="Select all on page" /></th>
                 <th data-sort="id" class="py-2 px-3 font-medium cursor-pointer">ID</th>
                 <th data-sort="patient_id" class="py-2 px-3 font-medium cursor-pointer">Patient</th>
                 <th data-sort="drug_id" class="py-2 px-3 font-medium cursor-pointer">Drug</th>
@@ -335,6 +350,14 @@
             </thead>
             <tbody id="all-deliveries-body" class="divide-y divide-slate-800"></tbody>
           </table>
+        </div>
+        <div id="deliveries-bulk-bar" class="hidden bg-slate-800/70 border border-slate-700 rounded p-2 text-[11px] flex flex-wrap items-center gap-2">
+          <span id="deliveries-bulk-count" class="font-medium"></span>
+          <button data-bulk-status="delivered" class="px-2 py-1 rounded bg-emerald-600/70 hover:bg-emerald-600">Mark Delivered</button>
+          <button data-bulk-status="missed" class="px-2 py-1 rounded bg-red-600/70 hover:bg-red-600">Mark Missed</button>
+          <button data-bulk-status="cancelled" class="px-2 py-1 rounded bg-slate-600/70 hover:bg-slate-600">Cancel</button>
+          <button id="bulk-delete-deliveries" class="ml-2 px-2 py-1 rounded bg-red-700/80 hover:bg-red-700">Delete</button>
+          <button id="bulk-clear" class="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600">Clear</button>
         </div>
         <div class="flex items-center justify-between text-[10px] mt-1">
           <div id="all-deliveries-info" class="text-slate-400"></div>
@@ -879,7 +902,7 @@
       const overviewState={
         patients:{sortKey:'id',sortDir:'asc',page:1,pageSize:25,search:''},
         drugs:{sortKey:'id',sortDir:'asc',page:1,pageSize:25,search:''},
-        deliveries:{sortKey:'id',sortDir:'asc',page:1,pageSize:25,search:''}
+  deliveries:{sortKey:'id',sortDir:'asc',page:1,pageSize:25,search:'',dateFrom:'',dateTo:'',selected:new Set(),visibleCols:{patient:true,drug:true,scheduled_for:true,status:true,notes:true}}
       };
       function debounce(fn,ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
       function applySort(rows,key,dir){
@@ -975,20 +998,56 @@
         const st=overviewState.deliveries;
         st.pageSize=Number(document.getElementById('all-deliveries-pagesize').value)||25;
         st.search=(document.getElementById('all-deliveries-search').value||'').toLowerCase();
+        st.dateFrom=document.getElementById('deliveries-date-from').value||'';
+        st.dateTo=document.getElementById('deliveries-date-to').value||'';
         let rows=(window.__deliveries||[]).filter(d=>{ if(!st.search){ return true; } return String(d.id)===st.search || d.status.toLowerCase().includes(st.search) || (d.notes||'').toLowerCase().includes(st.search); });
+        if(st.dateFrom){ rows=rows.filter(r=> r.scheduled_for && r.scheduled_for.substring(0,10)>=st.dateFrom); }
+        if(st.dateTo){ rows=rows.filter(r=> r.scheduled_for && r.scheduled_for.substring(0,10)<=st.dateTo); }
         rows=applySort(rows, st.sortKey, st.sortDir);
         const total=rows.length;
         rows=slicePage(rows, st.page, st.pageSize);
-        body.innerHTML=rows.map(d=>`<tr class='hover:bg-slate-700/40 transition'><td class='px-3 py-2 font-medium text-slate-300'>${d.id}</td><td class='px-3 py-2 text-slate-400'>${d.patient_id}</td><td class='px-3 py-2 text-slate-400'>${d.drug_id}</td><td class='px-3 py-2 text-slate-400 whitespace-nowrap'>${d.scheduled_for}</td><td class='px-3 py-2'>${statusBadge(d.status)}</td><td class='px-3 py-2 text-slate-400 max-w-[200px] truncate' title='${d.notes? escapeHTML(d.notes):''}'>${d.notes? escapeHTML(d.notes):'—'}</td></tr>`).join('');
+        body.innerHTML=rows.map(d=>{
+          const sel= st.selected.has(d.id);
+          return `<tr class='hover:bg-slate-700/40 transition'>
+            <td class='px-2 py-2'><input type='checkbox' data-row-select='${d.id}' class='accent-indigo-500' ${sel?'checked':''} /></td>
+            <td class='px-3 py-2 font-medium text-slate-300'>${d.id}</td>
+            <td class='px-3 py-2 text-slate-400 ${st.visibleCols.patient?'':'hidden'}'>${d.patient_id}</td>
+            <td class='px-3 py-2 text-slate-400 ${st.visibleCols.drug?'':'hidden'}'>${d.drug_id}</td>
+            <td class='px-3 py-2 text-slate-400 whitespace-nowrap ${st.visibleCols.scheduled_for?'':'hidden'}'>${d.scheduled_for}</td>
+            <td class='px-3 py-2 ${st.visibleCols.status?'':'hidden'}'>${statusBadge(d.status)}</td>
+            <td class='px-3 py-2 text-slate-400 max-w-[200px] truncate ${st.visibleCols.notes?'':'hidden'}' title='${d.notes? escapeHTML(d.notes):''}'>${d.notes? escapeHTML(d.notes):'—'}</td>
+          </tr>`;
+        }).join('');
         empty.textContent= total? '' : 'No deliveries found';
         info.textContent= total? `Showing ${(st.page-1)*st.pageSize+1}-${Math.min(total, st.page*st.pageSize)} of ${total}` : '';
         pager(total, st.page, st.pageSize, pagerEl, 'deliveries', renderAllDeliveries);
         updateCounts();
         document.querySelectorAll('#tbl-all-deliveries thead th').forEach(th=> sortIndicator(th, th.dataset.sort===st.sortKey, st.sortDir));
+        // Update bulk bar
+        const bulkBar=document.getElementById('deliveries-bulk-bar');
+        const bulkCount=document.getElementById('deliveries-bulk-count');
+        const count=st.selected.size;
+        bulkBar.classList.toggle('hidden', count===0);
+        bulkCount.textContent= count? count+ ' selected' : '';
+        // Master checkbox
+        const master=document.getElementById('deliveries-select-all');
+        if(master){ master.checked = count>0 && rows.every(r=> st.selected.has(r.id)); }
       }
   // Debounced search & page size
   const debouncedOverviewSearch = debounce(()=>{ overviewState.patients.page=1; overviewState.drugs.page=1; overviewState.deliveries.page=1; renderAllPatients(); renderAllDrugs(); renderAllDeliveries(); },250);
-  document.addEventListener('input', e=>{ if(['all-patients-search','all-drugs-search','all-deliveries-search'].includes(e.target.id)){ debouncedOverviewSearch(); } if(['all-patients-pagesize','all-drugs-pagesize','all-deliveries-pagesize'].includes(e.target.id)){ overviewState.patients.page=1; overviewState.drugs.page=1; overviewState.deliveries.page=1; renderAllPatients(); renderAllDrugs(); renderAllDeliveries(); }});
+  document.addEventListener('input', e=>{
+        if(['all-patients-search','all-drugs-search','all-deliveries-search','deliveries-date-from','deliveries-date-to'].includes(e.target.id)){
+          debouncedOverviewSearch();
+        }
+        if(['all-patients-pagesize','all-drugs-pagesize','all-deliveries-pagesize'].includes(e.target.id)){
+          overviewState.patients.page=1; overviewState.drugs.page=1; overviewState.deliveries.page=1; renderAllPatients(); renderAllDrugs(); renderAllDeliveries();
+        }
+        if(e.target.id==='activity-search'){
+          const term=e.target.value.toLowerCase();
+          const list=document.getElementById('activity-log');
+          [...list.children].forEach(li=>{ const txt=li.textContent.toLowerCase(); li.classList.toggle('hidden', term && !txt.includes(term)); });
+        }
+      });
   // Sorting handlers
   document.addEventListener('click', e=>{
         const th=e.target.closest('#tbl-all-patients th[data-sort], #tbl-all-drugs th[data-sort], #tbl-all-deliveries th[data-sort]');
@@ -1021,6 +1080,73 @@
         });
         downloadFile('deliveries_filtered.csv', toCSV(rows));
       });
+  document.getElementById('export-json').addEventListener('click', ()=>{
+        const payload={
+          generated:new Date().toISOString(),
+          patients:window.__patients||[],
+          drugs:window.__drugs||[],
+            deliveries:window.__deliveries||[]
+        };
+        const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+        const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='backup.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+        toast('JSON exported','success');
+      });
+  // Column menu toggle
+  document.getElementById('delivery-columns-btn').addEventListener('click', ()=>{ document.getElementById('delivery-columns-menu').classList.toggle('hidden'); });
+  document.addEventListener('click', e=>{
+        const m=document.getElementById('delivery-columns-menu');
+        if(!m){ return; }
+        const wrap=document.getElementById('delivery-columns-wrap');
+        if(!wrap.contains(e.target)){
+          m.classList.add('hidden');
+        }
+      });
+  document.getElementById('delivery-columns-menu').addEventListener('change', e=>{
+        if(e.target.matches('input[type=checkbox][data-col]')){
+          const col=e.target.getAttribute('data-col'); overviewState.deliveries.visibleCols[col]=e.target.checked; renderAllDeliveries();
+        }
+      });
+  // Bulk selection handlers
+  document.addEventListener('change', e=>{
+        if(e.target.id==='deliveries-select-all'){
+          const st=overviewState.deliveries; const body=document.getElementById('all-deliveries-body');
+          const ids=[...body.querySelectorAll('input[data-row-select]')].map(cb=> Number(cb.getAttribute('data-row-select')));
+          if(e.target.checked){ ids.forEach(id=> st.selected.add(id)); } else { ids.forEach(id=> st.selected.delete(id)); }
+          renderAllDeliveries();
+        }
+        if(e.target.matches('input[data-row-select]')){
+          const id=Number(e.target.getAttribute('data-row-select')); const st=overviewState.deliveries; if(e.target.checked){ st.selected.add(id);} else { st.selected.delete(id);} renderAllDeliveries();
+        }
+      });
+  document.getElementById('bulk-clear').addEventListener('click', ()=>{ overviewState.deliveries.selected.clear(); renderAllDeliveries(); });
+  document.getElementById('bulk-delete-deliveries').addEventListener('click', async ()=>{
+        const st=overviewState.deliveries;
+        if(!st.selected.size){ return; }
+        if(!confirmAction('Delete selected deliveries?')){ return; }
+        setLoading(true,'Deleting');
+        try {
+          await Promise.all([...st.selected].map(id=> call(`/api/deliveries/${id}`, {method:'DELETE'})));
+          toast('Deleted','success');
+          st.selected.clear();
+          await refreshDeliveries();
+          renderAllDeliveries();
+          loadStats();
+        }
+        catch(e){ console.error(e); toast('Bulk delete failed','error'); }
+        finally { setLoading(false); }
+      });
+  document.querySelectorAll('#deliveries-bulk-bar [data-bulk-status]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const status=btn.getAttribute('data-bulk-status'); const st=overviewState.deliveries; if(!st.selected.size){ return; }
+          setLoading(true,'Updating');
+          try { await Promise.all([...st.selected].map(id=> call(`/api/deliveries/${id}/status`, {method:'PATCH', body: JSON.stringify({status})}))); toast('Statuses updated','success'); st.selected.clear(); await refreshDeliveries(); renderAllDeliveries(); loadStats(); }
+          catch(e){ console.error(e); toast('Bulk update failed','error'); }
+          finally { setLoading(false); }
+        });
+      });
+  // Offline / online detection
+  function updateOnline(){ const b=document.getElementById('offline-banner'); if(navigator.onLine){ b.classList.add('hidden'); } else { b.classList.remove('hidden'); } }
+  window.addEventListener('online', updateOnline); window.addEventListener('offline', updateOnline); updateOnline();
 
       // Analytics rendering
       function aggregateDeliveriesByDay(days=14){
