@@ -570,6 +570,79 @@
       }
       function savePref(key,val){ try{ localStorage.setItem(key, String(val)); }catch{} }
       function loadPref(key,def){ try{ const v=localStorage.getItem(key); return v!==null?v:def; }catch{ return def; } }
+      function loadPrefs(){
+        // Load settings into form fields
+        try {
+          const refreshInput = document.getElementById('set-refresh');
+          const activityDisplayInput = document.getElementById('set-activity-display');
+          const activityStoreInput = document.getElementById('set-activity-store');
+          
+          if(refreshInput) refreshInput.value = loadPref('refreshInterval', '10');
+          if(activityDisplayInput) activityDisplayInput.value = loadPref('activityDisplayLimit', '50');
+          if(activityStoreInput) activityStoreInput.value = loadPref('activityStoreLimit', '200');
+        } catch(e) {
+          console.error('Failed to load preferences:', e);
+        }
+      }
+      function loadSettings(){
+        // Alias for loadPrefs for consistency with refresh button text
+        loadPrefs();
+      }
+
+      // Settings form handler
+      document.getElementById('settings-form')?.addEventListener('submit', e => {
+        e.preventDefault();
+        try {
+          const refreshInterval = document.getElementById('set-refresh').value;
+          const activityDisplayLimit = document.getElementById('set-activity-display').value;
+          const activityStoreLimit = document.getElementById('set-activity-store').value;
+          
+          savePref('refreshInterval', refreshInterval);
+          savePref('activityDisplayLimit', activityDisplayLimit);
+          savePref('activityStoreLimit', activityStoreLimit);
+          
+          // Update runtime variables
+          ACTIVITY_DISPLAY_LIMIT = Number(activityDisplayLimit) || 50;
+          ACTIVITY_STORE_LIMIT = Number(activityStoreLimit) || 200;
+          refreshInterval = Number(refreshInterval) || 10;
+          
+          document.getElementById('settings-status').textContent = 'Settings saved!';
+          toast('Settings saved successfully', 'success');
+          setTimeout(() => {
+            document.getElementById('settings-status').textContent = '';
+          }, 3000);
+        } catch(e) {
+          console.error('Failed to save settings:', e);
+          toast('Failed to save settings', 'error');
+        }
+      });
+
+      function renderAlerts(){
+        // Simple alerts implementation - shows low stock items
+        const alertList = document.getElementById('alert-list');
+        const alertCount = document.getElementById('alert-count');
+        if(!alertList || !alertCount) return;
+        
+        const drugs = window.__drugs || [];
+        const lowStockDrugs = drugs.filter(d => (d.stock || 0) <= (d.reorder_level || 0));
+        
+        alertCount.textContent = lowStockDrugs.length ? `${lowStockDrugs.length} alert${lowStockDrugs.length !== 1 ? 's' : ''}` : '';
+        
+        if(lowStockDrugs.length === 0) {
+          alertList.innerHTML = '<div class="text-slate-400 text-center py-4">No alerts</div>';
+          return;
+        }
+        
+        alertList.innerHTML = lowStockDrugs.map(drug => 
+          `<div class="flex items-center justify-between p-2 rounded bg-red-600/20 border border-red-600/30 text-red-300">
+            <div class="flex-1">
+              <div class="font-medium">${escapeHTML(drug.name)}</div>
+              <div class="text-[10px] text-red-400">Stock: ${drug.stock || 0} / Reorder level: ${drug.reorder_level || 0}</div>
+            </div>
+            <div class="text-[10px] bg-red-600/40 px-2 py-1 rounded">LOW STOCK</div>
+          </div>`
+        ).join('');
+      }
 
       async function call(path, opts={}) {
         const url = (path.startsWith('http')? path : API_BASE + path);
@@ -766,7 +839,6 @@
             }
           };
           actions.append(details, edit, del); li.append(actions); list.append(li);
-          const opt=document.createElement('option'); opt.value=p.id; opt.textContent=p.name; sel.append(opt);
         });
       }
 
@@ -812,7 +884,6 @@
           const del=document.createElement('button'); del.className='px-2 py-0.5 text-[10px] rounded bg-red-600/80 hover:bg-red-600'; del.textContent='Del';
           del.onclick=async()=>{ if(!confirmAction('Delete drug and related deliveries?')) { return; } try { await call(`/api/drugs/${d.id}`, {method:'DELETE'}); toast('Drug deleted','success'); refreshDrugs(); refreshDeliveries(); loadStats(); } catch(e){ console.error('Drug delete failed', e); toast('Delete failed','error'); } };
           actions.append(adjust, edit, del); li.append(actions); list.append(li);
-          const opt=document.createElement('option'); opt.value=d.id; opt.textContent=d.name; sel.append(opt);
         });
       }
 
@@ -954,7 +1025,7 @@ if(patientForm && !patientForm.__bound){
   // Dark theme removed; placeholder functions retained for other prefs.
     let countdown = 10; const cdEl=document.getElementById('refresh-countdown'); const auto=document.getElementById('auto-refresh');
   let refreshInterval = Number(loadPref('refreshInterval',10));
-  setInterval(()=>{ if(!auto.checked){ cdEl.textContent=''; return; } countdown--; if(countdown<=0){ countdown=refreshInterval; refreshDeliveries(); loadStats(); renderAnalytics(); renderAlerts(); renderCalendar(); } cdEl.textContent='Refresh in '+countdown+'s'; },1000);
+  setInterval(()=>{ if(!auto.checked){ cdEl.textContent=''; return; } countdown--; if(countdown<=0){ countdown=refreshInterval; refreshDeliveries(); loadStats(); renderAnalytics && renderAnalytics(); renderAlerts(); renderCalendar(); } cdEl.textContent='Refresh in '+countdown+'s'; },1000);
 
     // --- Calendar Implementation (added) ---
     const calendarState = { month: new Date(), selected: null };
@@ -1083,7 +1154,7 @@ if(patientForm && !patientForm.__bound){
         loadStats();
         renderAllPatients(); renderAllDrugs(); renderAllDeliveries();
         renderAlerts();
-        renderAnalytics();
+        renderAnalytics && renderAnalytics();
         renderInventory(); fetchInventoryTransactions();
         renderCalendar();
         activateTab('dashboard');
