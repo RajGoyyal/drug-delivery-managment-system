@@ -881,6 +881,12 @@
           actions.append(details, edit, del); li.append(actions); list.append(li);
         });
       }
+  // Minimal render helpers (avoid refresh errors if referenced)
+  function renderPatients(){ /* list already rebuilt inside refreshPatients; provided for delegated refresh safety */ }
+
+  function renderDrugs(){ /* drug list rebuilt inside refreshDrugs */ }
+
+  function renderDeliveries(){ /* deliveries list rebuilt inside refreshDeliveries */ }
 
       async function refreshDrugs(){
         const drugs = await call('/api/drugs');
