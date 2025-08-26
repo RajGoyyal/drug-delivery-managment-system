@@ -13,6 +13,15 @@ import os, sys, traceback
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from datetime import datetime, timezone, timedelta
+# Flexible import so script runs both as package (python -m server.main) and standalone (python server/main.py)
+try:  # package-relative
+    from . import ai_service as _ai_service  # type: ignore
+except Exception:
+    try:
+        import ai_service as _ai_service  # type: ignore
+    except Exception:  # final fallback: disabled AI features
+        _ai_service = None
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "data.db"
@@ -376,6 +385,11 @@ def root():
             "/api/deliveries/<id>/status (PATCH)",
             "/api/inventory/adjust (POST)",
             "/api/inventory/transactions",
+            "/api/inventory/summary",
+            "/api/insights",
+            "/api/ai/summary",
+            "/api/ai/chat",
+            "/api/ai/status",
         ],
     })
 
@@ -503,6 +517,191 @@ def inventory_summary():
             "days_supply": r[8],
         } for r in rows
     ])
+
+
+@app.get("/api/insights")
+def insights():
+    """Return heuristic insights (rule-based placeholder for future AI).
+
+    Contract: { adherence:{overall_percent, risk_patients[]}, inventory:{issues[]}, recommendations[], disclaimer }
+    """
+    horizon_days = int(request.args.get("horizon", 14))
+    since = datetime.now(timezone.utc) - timedelta(days=horizon_days)
+    with get_conn() as conn:
+        cur = conn.cursor()
+        # Overall adherence (delivered / (delivered+missed)) in horizon
+        adh_row = cur.execute(
+            """
+            SELECT 
+              SUM(CASE WHEN status='delivered' THEN 1 ELSE 0 END) delivered,
+              SUM(CASE WHEN status='missed' THEN 1 ELSE 0 END) missed
+            FROM deliveries
+            WHERE scheduled_for >= ?
+            """,
+            (since.isoformat(),)
+        ).fetchone()
+    delivered = (adh_row[0] or 0)
+    missed = (adh_row[1] or 0)
+    adherence_rate = round(delivered / (delivered + missed) * 100, 1) if (delivered + missed) else None
+    # Patients with multiple missed doses
+    risk_rows = cur.execute(
+            """
+            SELECT patient_id,
+                   SUM(CASE WHEN status='missed' THEN 1 ELSE 0 END) missed,
+                   SUM(CASE WHEN status='delivered' THEN 1 ELSE 0 END) delivered
+            FROM deliveries
+            WHERE scheduled_for >= ?
+            GROUP BY patient_id
+            HAVING missed >= 1
+            ORDER BY missed DESC, delivered ASC
+            LIMIT 8
+            """,
+            (since.isoformat(),)
+        ).fetchall()
+    patient_names = {r[0]: r[1] for r in cur.execute("SELECT id, name FROM patients").fetchall()}
+    risk_patients = [{"patient_id": r[0], "name": patient_names.get(r[0], f"Patient {r[0]}"), "missed": r[1], "delivered": r[2]} for r in risk_rows]
+    # Low / critical stock (days_supply < 5 or stock <= reorder_level)
+    inv_rows = cur.execute(
+            """
+            WITH recent AS (
+                SELECT drug_id, SUM(quantity) qty
+                FROM deliveries
+                WHERE scheduled_for >= datetime('now','-30 day')
+                GROUP BY drug_id
+            )
+            SELECT d.id, d.name, d.stock, d.reorder_level,
+                   COALESCE(r.qty,0) AS qty30
+            FROM drugs d
+            LEFT JOIN recent r ON r.drug_id = d.id
+            ORDER BY d.name
+            """
+        ).fetchall()
+    inventory_issues = []
+    recommendations = []
+    for _id, name, stock, reorder_level, qty30 in inv_rows:
+        daily = (qty30 / 30.0) if qty30 else 0.0
+        days_supply = round(stock / daily, 1) if daily > 0 else None
+        low_threshold = (reorder_level or 0)
+        severity = None
+        if stock <= low_threshold:
+            severity = "LOW" if (days_supply or 999) >= 3 else "CRITICAL"
+        elif days_supply is not None and days_supply < 5:
+            severity = "CRITICAL"
+        if severity:
+            inventory_issues.append({
+                "drug_id": _id,
+                "name": name,
+                "stock": stock,
+                "reorder_level": reorder_level,
+                "days_supply": days_supply,
+                "severity": severity,
+            })
+            if severity == "CRITICAL":
+                target_days = 21
+                if daily > 0:
+                    needed = int(max(0, (daily * target_days) - stock))
+                else:
+                    base = reorder_level * 2 if reorder_level else 50
+                    needed = int(base)
+                if needed > 0:
+                    recommendations.append(f"Consider reordering ~{needed} units of {name} (stock {stock}, days supply {days_supply}).")
+    if adherence_rate is not None:
+        if adherence_rate < 85:
+            recommendations.append(f"Overall adherence is {adherence_rate}%. Investigate missed doses.")
+        elif adherence_rate < 95:
+            recommendations.append(f"Adherence at {adherence_rate}% is moderate; aim for >=95%.")
+    if not recommendations and not inventory_issues and not risk_patients:
+        recommendations.append("System stable: no immediate risks detected.")
+    payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "horizon_days": horizon_days,
+        "adherence": {
+            "overall_percent": adherence_rate,
+            "risk_patients": risk_patients,
+        },
+        "inventory": {
+            "issues": inventory_issues,
+        },
+        "recommendations": recommendations,
+        "disclaimer": "Heuristic preview – not medical advice." ,
+    }
+    return jsonify(payload)
+
+
+def _ai_enabled():
+    return bool(_ai_service and getattr(_ai_service, 'ai_enabled', lambda: False)())
+
+@app.get("/api/ai/summary")
+def ai_summary():
+    # Gather stats + insights for summary
+    try:
+        with get_conn() as conn:
+            cur = conn.cursor()
+            patient_count = cur.execute("SELECT COUNT(*) FROM patients").fetchone()[0]
+            drug_count = cur.execute("SELECT COUNT(*) FROM drugs").fetchone()[0]
+            delivery_count = cur.execute("SELECT COUNT(*) FROM deliveries").fetchone()[0]
+            low_stock = cur.execute("SELECT COUNT(*) FROM drugs WHERE stock <= reorder_level").fetchone()[0]
+        stats = {"patients": patient_count, "drugs": drug_count, "deliveries": delivery_count, "low_stock_drugs": low_stock}
+        # Reuse internal insights logic via request dispatch (cheap call)
+        insights_data = insights().json if hasattr(insights(), 'json') else None  # fallback if direct
+        if not insights_data:
+            # If direct call caused duplicate execution, just skip
+            insights_data = {}
+        if _ai_service and hasattr(_ai_service, 'summarize'):
+            summary = _ai_service.summarize({"stats": stats, "insights": insights_data})
+        else:
+            summary = "AI module unavailable. Provide GOOGLE_GENAI_API_KEY and restart."
+        return jsonify({"summary": summary, "ai": _ai_enabled()})
+    except Exception as e:
+        return jsonify({"summary": f"Summary unavailable: {e}", "ai": False}), 500
+
+
+@app.post("/api/ai/chat")
+def ai_chat():
+    data = request.get_json(force=True) or {}
+    history = data.get("history") or []
+    if not isinstance(history, list):
+        return jsonify({"detail": "history must be a list"}), 400
+    # Coerce shape
+    sanitized = []
+    for m in history[-12:]:
+        if isinstance(m, dict) and isinstance(m.get("content"), str):
+            role = m.get("role", "user")
+            if role not in ("user", "assistant"): role = "user"
+            sanitized.append({"role": role, "content": m["content"][:2000]})
+    if not (_ai_service and hasattr(_ai_service, 'chat_reply')):
+        fallback = "AI module not loaded. Set GOOGLE_GENAI_API_KEY and restart server."
+        sanitized.append({"role": "assistant", "content": fallback})
+        return jsonify({"reply": fallback, "history": sanitized, "ai": False}), 200
+    try:
+        reply = _ai_service.chat_reply(sanitized)
+        sanitized.append({"role": "assistant", "content": reply})
+        return jsonify({"reply": reply, "history": sanitized, "ai": _ai_enabled()})
+    except Exception as e:
+        err = f"AI error: {e}"
+        sanitized.append({"role": "assistant", "content": err})
+        return jsonify({"reply": err, "history": sanitized, "ai": False}), 500
+
+
+@app.get("/api/ai/status")
+def ai_status():
+    enabled = _ai_enabled()
+    model = None
+    if _ai_service:
+        model = getattr(_ai_service, 'DEFAULT_MODEL', None)
+    reason = None
+    if not enabled:
+        if not _ai_service:
+            reason = "ai_service module not loaded"
+        elif not getattr(_ai_service, 'ai_enabled', lambda: False)():
+            reason = "GOOGLE_GENAI_API_KEY not set or placeholder"
+        else:
+            reason = "unknown"
+    return jsonify({
+        "ai": enabled,
+        "model": model,
+        "reason": reason,
+    })
 
 
 @app.errorhandler(Exception)

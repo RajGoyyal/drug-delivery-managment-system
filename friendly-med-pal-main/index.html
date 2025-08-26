@@ -83,7 +83,8 @@
         <button data-tab="calendar" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Calendar</button>
         <button data-tab="alerts" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Alerts</button>
         <button data-tab="history" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">History</button>
-        <button data-tab="settings" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Settings</button>
+  <button data-tab="settings" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Settings</button>
+  <button data-tab="insights" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Insights</button>
       </nav>
 
   <section data-view="dashboard" class="space-y-8">
@@ -268,6 +269,26 @@
           </div>
         </form>
         <div class="text-[11px] text-slate-500">Shortcuts: Alt+1..8 switch tabs, / focus search, Ctrl+Shift+S seed, Ctrl+Shift+E export all.</div>
+      </section>
+
+      <!-- Insights View -->
+      <section data-view="insights" class="bg-slate-800 border border-slate-700 rounded-lg shadow p-5 space-y-6 hidden">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-semibold flex items-center gap-2">AI Insights <span id="ai-badge" class="text-[10px] px-2 py-0.5 rounded bg-slate-700 text-slate-300 border border-slate-600">Loading</span></h2>
+          <div class="flex gap-2">
+            <button id="insights-refresh" class="text-xs px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button>
+          </div>
+        </div>
+        <div id="ai-summary" class="text-sm leading-relaxed text-slate-300 whitespace-pre-wrap bg-slate-900/40 border border-slate-700 rounded p-4 relative min-h-[90px] flex items-start"><span class="spinner mr-3"></span>Generating summary…</div>
+        <div class="space-y-3">
+          <h3 class="text-sm font-medium">Ask the Assistant</h3>
+          <div id="ai-chat-log" class="space-y-2 max-h-64 overflow-auto soft-scroll bg-slate-900/40 border border-slate-700 rounded p-3 text-sm"></div>
+          <form id="ai-chat-form" class="flex gap-2">
+            <input id="ai-chat-input" placeholder="Ask about adherence, stock, risks…" class="flex-1 px-3 py-2 rounded bg-slate-700 border border-slate-600 text-sm placeholder-slate-400" />
+            <button class="px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm disabled:opacity-50" id="ai-chat-send">Send</button>
+          </form>
+          <div id="ai-chat-hint" class="text-[11px] text-slate-500">The assistant provides operational summaries – not medical advice.</div>
+        </div>
       </section>
 
       <!-- All Patients Overview -->
@@ -1769,6 +1790,61 @@ if(patientForm && !patientForm.__bound){
       activateTab(loadPref('activeTab','dashboard'));
     }
     boot();
+    // --- AI Insights Feature ---
+    async function fetchInsightsSummary(){
+      const sumEl=document.getElementById('ai-summary'); const badge=document.getElementById('ai-badge');
+      if(!sumEl) return;
+      sumEl.innerHTML='<span class="spinner mr-3"></span>Generating summary…';
+      try {
+        const res= await fetch(API_BASE+'/api/ai/summary');
+        const data= await res.json();
+        if(badge){ badge.textContent= data.ai? 'AI' : 'Heuristic'; badge.classList.toggle('bg-indigo-600', !!data.ai); badge.classList.toggle('text-white', !!data.ai); }
+        sumEl.textContent = data.summary || '(No summary)';
+      } catch(e){ console.error('summary', e); sumEl.textContent='Failed to load summary'; }
+    }
+    async function fetchInsights(){
+      try {
+        const r= await fetch(API_BASE+'/api/insights');
+        const d= await r.json();
+        // Could render structured insights later (risk patients, inventory issues)
+        window.__insights=d;
+      } catch(e){ console.error('insights', e); }
+    }
+    function appendChat(role,text){
+      const log=document.getElementById('ai-chat-log');
+      if(!log) return;
+      const item=document.createElement('div');
+      item.className='flex items-start gap-2';
+      const badge= role==='user'? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-300';
+      item.innerHTML=`<span class='text-[10px] px-2 py-1 rounded ${badge} capitalize'>${role}</span><div class='flex-1 whitespace-pre-wrap text-slate-300 text-sm'>${escapeHTML(text)}</div>`;
+      log.append(item); log.scrollTop=log.scrollHeight;
+    }
+    async function sendChat(message){
+      const btn=document.getElementById('ai-chat-send');
+      btn.disabled=true; btn.textContent='Sending…';
+      try {
+        const history=(window.__aiChatHistory||[]);
+        history.push({role:'user', content: message});
+        appendChat('user', message);
+        const res= await fetch(API_BASE+'/api/ai/chat',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({history})});
+        const data= await res.json();
+        if(data.reply){ appendChat('assistant', data.reply); window.__aiChatHistory=data.history; }
+        else { appendChat('assistant', '(No reply)'); }
+      } catch(e){ console.error('chat', e); appendChat('assistant','Error sending message'); }
+      finally { btn.disabled=false; btn.textContent='Send'; }
+    }
+    document.addEventListener('click', e=>{ if(e.target && e.target.id==='insights-refresh'){ fetchInsights(); fetchInsightsSummary(); } });
+    const chatForm=document.getElementById('ai-chat-form');
+    if(chatForm){
+      chatForm.addEventListener('submit', e=>{ e.preventDefault(); const input=document.getElementById('ai-chat-input'); const v=(input.value||'').trim(); if(!v){ return; } input.value=''; sendChat(v); });
+    }
+    // Lazy load when tab first opened
+    const origActivate=activateTab;
+    let insightsBoot=false;
+    activateTab=function(name){
+      origActivate(name);
+      if(name==='insights' && !insightsBoot){ insightsBoot=true; fetchInsights(); fetchInsightsSummary(); }
+    };
     </script>
   </body>
   </html>
