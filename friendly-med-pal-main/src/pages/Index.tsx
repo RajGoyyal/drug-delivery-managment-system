@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { Activity, Users, Pill, FileText, Package, Boxes } from "lucide-react";
+import InventoryPanel from "@/components/InventoryPanel";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { RefreshButton } from "@/components/RefreshButton";
 import Dashboard from "@/components/Dashboard";
@@ -10,21 +11,6 @@ import DeliveryHistory from "@/components/DeliveryHistory";
 
 interface TabDef { id:string; label:string; icon: React.ComponentType<any>; component: JSX.Element; }
 
-// Simple placeholder inventory component until full feature ported
-function InventoryPlaceholder(){
-  return (
-    <div className="border rounded-lg p-6 bg-card/50">
-      <h2 className="text-xl font-semibold mb-2">Inventory (Coming Soon)</h2>
-      <p className="text-sm text-muted-foreground mb-4">Detailed stock levels, pending quantities, daily averages and transaction history will appear here after migration.</p>
-      <ul className="text-sm list-disc pl-5 space-y-1">
-        <li>Low stock detection & metrics</li>
-        <li>Adjust stock with reason codes</li>
-        <li>Pending reservations & days supply</li>
-        <li>CSV export & transaction log</li>
-      </ul>
-    </div>
-  );
-}
 
 const tabs: TabDef[] = [
   { id: 'dashboard', label: 'Dashboard', icon: Activity, component: <Dashboard/> },
@@ -32,7 +18,7 @@ const tabs: TabDef[] = [
   { id: 'drugs', label: 'Drugs', icon: Pill, component: <DrugsPanel/> },
   { id: 'deliveries', label: 'Deliveries', icon: Package, component: <DeliveriesPanel/> },
   { id: 'history', label: 'History', icon: FileText, component: <DeliveryHistory/> },
-  { id: 'inventory', label: 'Inventory', icon: Boxes, component: <InventoryPlaceholder/> },
+  { id: 'inventory', label: 'Inventory', icon: Boxes, component: <InventoryPanel/> },
   // Future: inventory, analytics, settings...
 ];
 
