@@ -1655,25 +1655,33 @@ if(patientForm && !patientForm.__bound){
       };
       document.addEventListener('click', e=>{ const t=e.target; if(t.dataset && t.dataset.sort){ const key=t.dataset.sort; if(inventoryState.sort.key===key){ inventoryState.sort.dir= inventoryState.sort.dir==='asc'? 'desc':'asc'; } else { inventoryState.sort.key=key; inventoryState.sort.dir='asc'; } renderInventory(); return; } if(t.matches && t.matches('button[data-inv-adjust]')){ const id=Number(t.getAttribute('data-inv-adjust')); openInventoryAdjust(id); return; } const fn=inventoryClickHandlers[t.id]; if(fn){ fn(); } });
       // Global refresh buttons wiring
-      document.addEventListener('click', async e=>{
-        const id=e.target.id;
-        try {
-          switch(id){
-            case 'refresh-dashboard': setLoading(true,'Refreshing'); await Promise.all([refreshPatients(), refreshDrugs(), refreshDeliveries()]); loadStats(); renderActivity(); setLoading(false); break;
-            case 'refresh-patients': setLoading(true,'Patients'); await refreshPatients(); renderPatients(); setLoading(false); break;
-            case 'refresh-drugs': setLoading(true,'Drugs'); await refreshDrugs(); renderDrugs(); setLoading(false); break;
-            case 'refresh-deliveries': setLoading(true,'Deliveries'); await refreshDeliveries(); renderDeliveries(); renderAllDeliveries && renderAllDeliveries(); loadStats(); setLoading(false); break;
-            case 'refresh-history': setLoading(true,'History'); await refreshDeliveries(); renderHistory && renderHistory(); setLoading(false); break;
-            case 'refresh-analytics': setLoading(true,'Analytics'); await refreshDeliveries(); buildAnalytics && buildAnalytics(); setLoading(false); break;
-            case 'refresh-calendar': setLoading(true,'Calendar'); await refreshDeliveries(); renderCalendar && renderCalendar(); setLoading(false); break;
-            case 'refresh-alerts': setLoading(true,'Alerts'); await refreshDrugs(); loadStats(); setLoading(false); break;
-            case 'refresh-settings': loadSettings && loadSettings(); toast('Defaults loaded','success'); break;
-            case 'refresh-all-patients': setLoading(true,'Patients'); await refreshPatients(); renderAllPatients && renderAllPatients(); setLoading(false); break;
-            case 'refresh-all-drugs': setLoading(true,'Drugs'); await refreshDrugs(); renderAllDrugs && renderAllDrugs(); setLoading(false); break;
-            case 'refresh-all-deliveries': setLoading(true,'Deliveries'); await refreshDeliveries(); renderAllDeliveries && renderAllDeliveries(); setLoading(false); break;
-          }
-        } catch(err){ console.error(err); toast('Refresh failed','error'); setLoading(false); }
-      });
+      // Single delegated refresh handler (dedup & robust)
+      if(!window.__refreshDelegated){
+        window.__refreshDelegated=true;
+        document.addEventListener('click', async e=>{
+          const id=e.target && e.target.id;
+          if(!id || !id.startsWith('refresh-')) return;
+          const actions={
+            'refresh-dashboard': async ()=>{ await Promise.all([refreshPatients(), refreshDrugs(), refreshDeliveries()]); loadStats(); renderActivity && renderActivity(); },
+            'refresh-patients': async ()=>{ await refreshPatients(); renderPatients && renderPatients(); },
+            'refresh-drugs': async ()=>{ await refreshDrugs(); renderDrugs && renderDrugs(); },
+            'refresh-deliveries': async ()=>{ await refreshDeliveries(); renderDeliveries && renderDeliveries(); renderAllDeliveries && renderAllDeliveries(); loadStats(); },
+            'refresh-history': async ()=>{ await refreshDeliveries(); renderHistory && renderHistory(); },
+            'refresh-analytics': async ()=>{ await refreshDeliveries(); buildAnalytics && buildAnalytics(); },
+            'refresh-calendar': async ()=>{ await refreshDeliveries(); renderCalendar && renderCalendar(); },
+            'refresh-alerts': async ()=>{ await refreshDrugs(); loadStats(); },
+            'refresh-settings': async ()=>{ loadSettings && loadSettings(); toast('Defaults loaded','success'); },
+            'refresh-all-patients': async ()=>{ await refreshPatients(); renderAllPatients && renderAllPatients(); },
+            'refresh-all-drugs': async ()=>{ await refreshDrugs(); renderAllDrugs && renderAllDrugs(); },
+            'refresh-all-deliveries': async ()=>{ await refreshDeliveries(); renderAllDeliveries && renderAllDeliveries(); }
+          };
+          const fn=actions[id]; if(!fn) return;
+          setLoading(true, 'Refreshing');
+          try { await fn(); }
+          catch(err){ console.error('refresh failed', err); toast('Refresh failed','error'); }
+          finally { setLoading(false); }
+        });
+      }
       function openInventoryAdjust(id){ const modal=document.getElementById('inv-adjust-modal'); const drug=inventoryState.merged.find(d=> d.id===id); if(!drug){ return; } modal.classList.remove('hidden'); modal.classList.add('flex'); modal.dataset.drugId=id; document.getElementById('inv-adjust-name').value=`${drug.name} (${drug.dosage||''})`; document.getElementById('inv-adjust-current').value=drug.stock||0; document.getElementById('inv-adjust-reorder').value=drug.reorder_level||0; document.getElementById('inv-adjust-delta').value=''; document.getElementById('inv-adjust-reason').value='manual'; document.getElementById('inv-adjust-error').textContent=''; }
       function closeInventoryAdjust(){ const modal=document.getElementById('inv-adjust-modal'); modal.classList.add('hidden'); modal.classList.remove('flex'); }
       document.getElementById('inv-adjust-form').addEventListener('submit', async e=>{ e.preventDefault(); const modal=document.getElementById('inv-adjust-modal'); const id=Number(modal.dataset.drugId); const delta=parseInt(document.getElementById('inv-adjust-delta').value,10); const reason=document.getElementById('inv-adjust-reason').value||'manual'; if(isNaN(delta)||!delta){ document.getElementById('inv-adjust-error').textContent='Enter a non-zero number'; return; } const spin=document.getElementById('inv-adjust-spin'); spin.classList.remove('hidden'); try { await call('/api/inventory/adjust',{method:'POST', body: JSON.stringify({drug_id:id, delta, reason})}); toast('Adjusted','success'); await loadInventoryData(); fetchInventoryTransactions(); closeInventoryAdjust(); } catch(err){ console.error(err); document.getElementById('inv-adjust-error').textContent='Adjustment failed'; } finally { spin.classList.add('hidden'); } });
