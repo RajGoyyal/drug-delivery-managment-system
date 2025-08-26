@@ -121,6 +121,9 @@ SQL_PATIENT_BY_ID = "SELECT * FROM patients WHERE id=?"
 SQL_DRUG_BY_ID = "SELECT * FROM drugs WHERE id=?"
 SQL_DELIVERY_BY_ID = "SELECT * FROM deliveries WHERE id=?"
 SQL_TXN_INSERT = "INSERT INTO inventory_transactions(drug_id, delta, reason) VALUES (?,?,?)"
+SQL_COUNT_PATIENTS = "SELECT COUNT(*) FROM patients"
+SQL_COUNT_DRUGS = "SELECT COUNT(*) FROM drugs"
+SQL_COUNT_DELIVERIES = "SELECT COUNT(*) FROM deliveries"
 NOT_FOUND = {"detail": "not found"}
 
 
@@ -142,11 +145,11 @@ def stats():
     """Aggregate counts + low stock list (fixed previous connection scope bug)."""
     with get_conn() as conn:
         cur = conn.cursor()
-        patient_count = cur.execute("SELECT COUNT(*) FROM patients").fetchone()[0]
-        drug_count = cur.execute("SELECT COUNT(*) FROM drugs").fetchone()[0]
-        delivery_count = cur.execute("SELECT COUNT(*) FROM deliveries").fetchone()[0]
-        status_rows = cur.execute("SELECT status, COUNT(*) FROM deliveries GROUP BY status").fetchall()
-        low_stock_rows = cur.execute("SELECT id, name, stock, reorder_level FROM drugs WHERE stock <= reorder_level").fetchall()
+    patient_count = cur.execute(SQL_COUNT_PATIENTS).fetchone()[0]
+    drug_count = cur.execute(SQL_COUNT_DRUGS).fetchone()[0]
+    delivery_count = cur.execute(SQL_COUNT_DELIVERIES).fetchone()[0]
+    status_rows = cur.execute("SELECT status, COUNT(*) FROM deliveries GROUP BY status").fetchall()
+    low_stock_rows = cur.execute("SELECT id, name, stock, reorder_level FROM drugs WHERE stock <= reorder_level").fetchall()
     status_map = {r[0]: r[1] for r in status_rows}
     return jsonify({
         "patients": patient_count,
@@ -389,6 +392,7 @@ def root():
             "/api/insights",
             "/api/ai/summary",
             "/api/ai/chat",
+            "/api/ai/answer",
             "/api/ai/status",
         ],
     })
@@ -519,17 +523,11 @@ def inventory_summary():
     ])
 
 
-@app.get("/api/insights")
-def insights():
-    """Return heuristic insights (rule-based placeholder for future AI).
-
-    Contract: { adherence:{overall_percent, risk_patients[]}, inventory:{issues[]}, recommendations[], disclaimer }
-    """
-    horizon_days = int(request.args.get("horizon", 14))
+def compute_insights(horizon_days: int = 14) -> Dict[str, Any]:
+    """Produce heuristic insights dict (shared by route & RAG context)."""
     since = datetime.now(timezone.utc) - timedelta(days=horizon_days)
     with get_conn() as conn:
         cur = conn.cursor()
-        # Overall adherence (delivered / (delivered+missed)) in horizon
         adh_row = cur.execute(
             """
             SELECT 
@@ -540,11 +538,10 @@ def insights():
             """,
             (since.isoformat(),)
         ).fetchone()
-    delivered = (adh_row[0] or 0)
-    missed = (adh_row[1] or 0)
-    adherence_rate = round(delivered / (delivered + missed) * 100, 1) if (delivered + missed) else None
-    # Patients with multiple missed doses
-    risk_rows = cur.execute(
+        delivered = (adh_row[0] or 0)
+        missed = (adh_row[1] or 0)
+        adherence_rate = round(delivered / (delivered + missed) * 100, 1) if (delivered + missed) else None
+        risk_rows = cur.execute(
             """
             SELECT patient_id,
                    SUM(CASE WHEN status='missed' THEN 1 ELSE 0 END) missed,
@@ -558,10 +555,12 @@ def insights():
             """,
             (since.isoformat(),)
         ).fetchall()
-    patient_names = {r[0]: r[1] for r in cur.execute("SELECT id, name FROM patients").fetchall()}
-    risk_patients = [{"patient_id": r[0], "name": patient_names.get(r[0], f"Patient {r[0]}"), "missed": r[1], "delivered": r[2]} for r in risk_rows]
-    # Low / critical stock (days_supply < 5 or stock <= reorder_level)
-    inv_rows = cur.execute(
+        patient_names = {r[0]: r[1] for r in cur.execute("SELECT id, name FROM patients").fetchall()}
+        risk_patients = [
+            {"patient_id": r[0], "name": patient_names.get(r[0], f"Patient {r[0]}"), "missed": r[1], "delivered": r[2]}
+            for r in risk_rows
+        ]
+        inv_rows = cur.execute(
             """
             WITH recent AS (
                 SELECT drug_id, SUM(quantity) qty
@@ -576,8 +575,8 @@ def insights():
             ORDER BY d.name
             """
         ).fetchall()
-    inventory_issues = []
-    recommendations = []
+    inventory_issues: List[Dict[str, Any]] = []
+    recommendations: List[str] = []
     for _id, name, stock, reorder_level, qty30 in inv_rows:
         daily = (qty30 / 30.0) if qty30 else 0.0
         days_supply = round(stock / daily, 1) if daily > 0 else None
@@ -604,28 +603,38 @@ def insights():
                     base = reorder_level * 2 if reorder_level else 50
                     needed = int(base)
                 if needed > 0:
-                    recommendations.append(f"Consider reordering ~{needed} units of {name} (stock {stock}, days supply {days_supply}).")
-    if adherence_rate is not None:
-        if adherence_rate < 85:
-            recommendations.append(f"Overall adherence is {adherence_rate}%. Investigate missed doses.")
-        elif adherence_rate < 95:
-            recommendations.append(f"Adherence at {adherence_rate}% is moderate; aim for >=95%.")
+                    recommendations.append(
+                        f"Consider reordering ~{needed} units of {name} (stock {stock}, days supply {days_supply})."
+                    )
+    if (delivered + missed):
+        if adherence_rate is not None:
+            if adherence_rate < 85:
+                recommendations.append(
+                    f"Overall adherence is {adherence_rate}%. Investigate missed doses."
+                )
+            elif adherence_rate < 95:
+                recommendations.append(
+                    f"Adherence at {adherence_rate}% is moderate; aim for >=95%."
+                )
     if not recommendations and not inventory_issues and not risk_patients:
         recommendations.append("System stable: no immediate risks detected.")
-    payload = {
+    return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "horizon_days": horizon_days,
         "adherence": {
             "overall_percent": adherence_rate,
             "risk_patients": risk_patients,
         },
-        "inventory": {
-            "issues": inventory_issues,
-        },
+        "inventory": {"issues": inventory_issues},
         "recommendations": recommendations,
-        "disclaimer": "Heuristic preview – not medical advice." ,
+        "disclaimer": "Heuristic preview – not medical advice.",
     }
-    return jsonify(payload)
+
+
+@app.get("/api/insights")
+def insights():
+    horizon_days = int(request.args.get("horizon", 14))
+    return jsonify(compute_insights(horizon_days))
 
 
 def _ai_enabled():
@@ -637,9 +646,9 @@ def ai_summary():
     try:
         with get_conn() as conn:
             cur = conn.cursor()
-            patient_count = cur.execute("SELECT COUNT(*) FROM patients").fetchone()[0]
-            drug_count = cur.execute("SELECT COUNT(*) FROM drugs").fetchone()[0]
-            delivery_count = cur.execute("SELECT COUNT(*) FROM deliveries").fetchone()[0]
+            patient_count = cur.execute(SQL_COUNT_PATIENTS).fetchone()[0]
+            drug_count = cur.execute(SQL_COUNT_DRUGS).fetchone()[0]
+            delivery_count = cur.execute(SQL_COUNT_DELIVERIES).fetchone()[0]
             low_stock = cur.execute("SELECT COUNT(*) FROM drugs WHERE stock <= reorder_level").fetchone()[0]
         stats = {"patients": patient_count, "drugs": drug_count, "deliveries": delivery_count, "low_stock_drugs": low_stock}
         # Reuse internal insights logic via request dispatch (cheap call)
@@ -697,11 +706,116 @@ def ai_status():
             reason = "GOOGLE_GENAI_API_KEY not set or placeholder"
         else:
             reason = "unknown"
+    last_err = None
+    try:
+        if _ai_service:
+            last_err = getattr(_ai_service, 'LAST_AI_ERROR', None)
+    except Exception:
+        last_err = None
     return jsonify({
         "ai": enabled,
         "model": model,
         "reason": reason,
+        "last_ai_error": last_err,
     })
+
+
+def _tokenize(text: str) -> List[str]:
+    if not isinstance(text, str):
+        try:
+            text = str(text)
+        except Exception:
+            return []
+    return [t for t in ''.join(c.lower() if (c.isalnum() or c in ('-')) else ' ' for c in (text or '')).split() if t]
+
+
+_RAG_CACHE: Dict[str, Any] = {"ts": 0, "insights": None}
+
+def _build_rag_context(question: str) -> Dict[str, Any]:
+    terms = set(_tokenize(question))
+    ctx: Dict[str, Any] = {}
+    now_ts = datetime.now(timezone.utc).timestamp()
+    with get_conn() as conn:
+        cur = conn.cursor()
+        patient_count = cur.execute(SQL_COUNT_PATIENTS).fetchone()[0]
+        drug_count = cur.execute(SQL_COUNT_DRUGS).fetchone()[0]
+        delivery_count = cur.execute(SQL_COUNT_DELIVERIES).fetchone()[0]
+        low_stock_rows = cur.execute("SELECT id,name,stock,reorder_level FROM drugs WHERE stock <= reorder_level LIMIT 60").fetchall()
+        patients = cur.execute("SELECT id,name,age,condition FROM patients LIMIT 600").fetchall()
+        drugs = cur.execute("SELECT id,name,dosage,stock,reorder_level FROM drugs LIMIT 600").fetchall()
+        deliveries = cur.execute("SELECT id,patient_id,drug_id,scheduled_for,status,quantity,notes FROM deliveries ORDER BY id DESC LIMIT 200").fetchall()
+    ctx['stats'] = {"patients": patient_count, "drugs": drug_count, "deliveries": delivery_count, "low_stock": len(low_stock_rows)}
+    # Scoring function: term overlap across name + condition / notes
+    def score_tokens(*texts: str) -> int:
+        local_terms: set[str] = set()
+        for t in texts:
+            local_terms.update(_tokenize(t))
+        return len(local_terms & terms)
+    patient_matches = []
+    for r in patients:
+        sc = score_tokens(r[1] or '', r[3] or '')
+        if sc:
+            patient_matches.append((sc, {"id": r[0], "name": r[1], "age": r[2], "condition": r[3]}))
+    drug_matches = []
+    for r in drugs:
+        sc = score_tokens(r[1] or '')
+        if sc:
+            drug_matches.append((sc, {"id": r[0], "name": r[1], "dosage": r[2], "stock": r[3], "reorder_level": r[4]}))
+    delivery_matches = []
+    for r in deliveries:
+        # r indices: 0 id,1 patient_id,2 drug_id,3 scheduled_for,4 status(str),5 quantity(int),6 notes(str)
+        sc = score_tokens(r[4] or '', r[6] or '')  # status + notes (fix wrong index that caused int iteration)
+        if sc:
+            delivery_matches.append((sc, {"id": r[0], "patient_id": r[1], "drug_id": r[2], "scheduled_for": r[3], "status": r[4], "quantity": r[5], "notes": r[6]}))
+    patient_matches.sort(key=lambda x: -x[0])
+    drug_matches.sort(key=lambda x: -x[0])
+    delivery_matches.sort(key=lambda x: -x[0])
+    if patient_matches:
+        ctx['matched_patients'] = [m[1] for m in patient_matches[:40]]
+    if drug_matches:
+        ctx['matched_drugs'] = [m[1] for m in drug_matches[:40]]
+    if delivery_matches:
+        ctx['matched_deliveries'] = [m[1] for m in delivery_matches[:60]]
+    ctx['recent_deliveries'] = [
+        {"id": r[0], "patient_id": r[1], "drug_id": r[2], "scheduled_for": r[3], "status": r[4], "quantity": r[5]} for r in deliveries[:120]
+    ]
+    ctx['low_stock_list'] = [
+        {"id": r[0], "name": r[1], "stock": r[2], "reorder_level": r[3]} for r in low_stock_rows[:60]
+    ]
+    # Cache insights for 60s
+    if _RAG_CACHE['insights'] is None or (now_ts - _RAG_CACHE['ts']) > 60:
+        try:
+            _RAG_CACHE['insights'] = compute_insights()
+            _RAG_CACHE['ts'] = now_ts
+        except Exception:
+            _RAG_CACHE['insights'] = {}
+    ctx['insights'] = _RAG_CACHE['insights'] or {}
+    ctx['query_terms'] = list(terms)[:40]
+    return ctx
+
+
+@app.post('/api/ai/answer')
+def ai_answer():
+    data = request.get_json(force=True) or {}
+    question_raw = data.get('question')
+    question = (question_raw or '').strip()
+    include_ctx = bool(data.get('include_context'))
+    if not question:
+        return jsonify({"detail": "question required"}), 400
+    if not (_ai_service and hasattr(_ai_service, 'answer_with_context')):
+        return jsonify({"answer": "AI module not loaded.", "ai": False}), 200
+    try:
+        ctx = _build_rag_context(question)
+        answer = _ai_service.answer_with_context(question, ctx)
+        resp: Dict[str, Any] = {"answer": answer, "ai": _ai_enabled(), "context_keys": list(ctx.keys())}
+        if include_ctx:
+            # Provide truncated context excerpt for transparency
+            import json as _json
+            excerpt = _json.dumps(ctx)[:4000]
+            resp['context_excerpt'] = excerpt
+        return jsonify(resp)
+    except Exception as e:
+        return jsonify({"answer": f"RAG answer failed: {e}", "ai": False}), 500
 
 
 @app.errorhandler(Exception)

@@ -77,14 +77,14 @@
         <button data-tab="all-drugs" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">All Drugs <span class="text-[10px] ml-1 opacity-60" data-count="drugs"></span></button>
         <button data-tab="drugs" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Add Drug</button>
         <button data-tab="all-deliveries" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">All Deliveries <span class="text-[10px] ml-1 opacity-60" data-count="deliveries"></span></button>
-        <button data-tab="deliveries" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Schedule</button>
+  <button data-tab="deliveries" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Schedule</button>
   <button data-tab="inventory" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Inventory</button>
-        <button data-tab="analytics" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Analytics</button>
-        <button data-tab="calendar" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Calendar</button>
-        <button data-tab="alerts" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Alerts</button>
-        <button data-tab="history" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">History</button>
-  <button data-tab="settings" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Settings</button>
   <button data-tab="insights" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Insights</button>
+  <button data-tab="analytics" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Analytics</button>
+  <button data-tab="calendar" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Calendar</button>
+  <button data-tab="alerts" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Alerts</button>
+  <button data-tab="history" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">History</button>
+  <button data-tab="settings" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Settings</button>
       </nav>
 
   <section data-view="dashboard" class="space-y-8">
@@ -277,17 +277,53 @@
           <h2 class="text-lg font-semibold flex items-center gap-2">AI Insights <span id="ai-badge" class="text-[10px] px-2 py-0.5 rounded bg-slate-700 text-slate-300 border border-slate-600">Loading</span></h2>
           <div class="flex gap-2">
             <button id="insights-refresh" class="text-xs px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button>
+            <button id="insights-toggle-structured" class="text-xs px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600" title="Show/hide structured data backing the summary">Show Data</button>
+            <button id="insights-explain-summary" class="text-xs px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600" title="Ask AI to explain how it formed the summary">Explain</button>
+            <button id="insights-challenge" class="text-xs px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600" title="Cross‑examine / challenge potential assumptions">Cross Examine</button>
           </div>
         </div>
         <div id="ai-summary" class="text-sm leading-relaxed text-slate-300 whitespace-pre-wrap bg-slate-900/40 border border-slate-700 rounded p-4 relative min-h-[90px] flex items-start"><span class="spinner mr-3"></span>Generating summary…</div>
+        <div id="insights-structured" class="hidden space-y-5 text-[13px]">
+          <div id="insights-adherence" class="bg-slate-900/40 border border-slate-700 rounded p-4 space-y-3">
+            <h3 class="text-xs uppercase tracking-wide text-slate-400 flex items-center gap-2">Adherence <button data-explain-adherence class="text-[10px] px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Explain</button></h3>
+            <div id="adherence-summary" class="text-slate-300"></div>
+            <ul id="risk-patients" class="space-y-1"></ul>
+          </div>
+          <div id="insights-inventory" class="bg-slate-900/40 border border-slate-700 rounded p-4 space-y-3">
+            <h3 class="text-xs uppercase tracking-wide text-slate-400 flex items-center gap-2">Inventory Issues <button data-explain-inventory class="text-[10px] px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Explain</button></h3>
+            <ul id="inventory-issues" class="space-y-1"></ul>
+          </div>
+          <div id="insights-recommendations" class="bg-slate-900/40 border border-slate-700 rounded p-4 space-y-3">
+            <h3 class="text-xs uppercase tracking-wide text-slate-400 flex items-center gap-2">Recommendations <button data-explain-recs class="text-[10px] px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Explain</button></h3>
+            <ol id="recommendations-list" class="space-y-1 list-decimal list-inside"></ol>
+          </div>
+          <div class="text-[10px] text-slate-500" id="insights-disclaimer"></div>
+        </div>
         <div class="space-y-3">
-          <h3 class="text-sm font-medium">Ask the Assistant</h3>
+          <h3 class="text-sm font-medium">Operational Q&A</h3>
+          <div class="mt-0 border-t border-slate-700 pt-0">
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="text-xs font-semibold text-slate-400 tracking-wide">RAG Question Answering</h4>
+              <button id="rag-toggle-context" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 border border-slate-700 hover:bg-slate-700">Show Context Keys</button>
+            </div>
+            <form id="rag-form" class="flex flex-col gap-2 mb-2">
+              <div class="flex gap-2">
+                <input id="rag-input" type="text" placeholder="Ask about patients, drugs, adherence, inventory..." class="flex-1 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm outline-none focus:ring focus:ring-indigo-600/40" />
+                <button id="rag-send" type="submit" class="px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm">Ask</button>
+              </div>
+              <label class="flex items-center gap-2 text-[11px] text-slate-400 select-none"><input id="rag-include-context" type="checkbox" class="scale-90"> Include context excerpt (debug)</label>
+            </form>
+            <div id="rag-status" class="text-[11px] text-slate-500 mb-1"></div>
+            <div id="rag-answer" class="prose prose-invert max-w-none text-sm leading-relaxed"></div>
+            <pre id="rag-context-keys" class="hidden mt-3 max-h-32 overflow-auto bg-slate-900/60 border border-slate-700 rounded p-2 text-[10px]"></pre>
+          </div>
+          <h4 class="text-xs font-semibold text-slate-400 tracking-wide pt-2 border-t border-slate-700">Free-form Assistant Chat</h4>
           <div id="ai-chat-log" class="space-y-2 max-h-64 overflow-auto soft-scroll bg-slate-900/40 border border-slate-700 rounded p-3 text-sm"></div>
           <form id="ai-chat-form" class="flex gap-2">
-            <input id="ai-chat-input" placeholder="Ask about adherence, stock, risks…" class="flex-1 px-3 py-2 rounded bg-slate-700 border border-slate-600 text-sm placeholder-slate-400" />
+            <input id="ai-chat-input" placeholder="Chat about adherence, stock, risks…" class="flex-1 px-3 py-2 rounded bg-slate-700 border border-slate-600 text-sm placeholder-slate-400" />
             <button class="px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm disabled:opacity-50" id="ai-chat-send">Send</button>
           </form>
-          <div id="ai-chat-hint" class="text-[11px] text-slate-500">The assistant provides operational summaries – not medical advice.</div>
+          <div id="ai-chat-hint" class="text-[11px] text-slate-500">Chat provides heuristic responses when no AI key is set.</div>
         </div>
       </section>
 
@@ -1791,6 +1827,12 @@ if(patientForm && !patientForm.__bound){
     }
     boot();
     // --- AI Insights Feature ---
+        function safeTextify(v){
+          if(v===null || v===undefined) return '';
+          const t=typeof v;
+          if(t==='string' || t==='number' || t==='boolean') return String(v);
+          try { return JSON.stringify(v, null, 2); } catch(e){ return String(v); }
+        }
     async function fetchInsightsSummary(){
       const sumEl=document.getElementById('ai-summary'); const badge=document.getElementById('ai-badge');
       if(!sumEl) return;
@@ -1799,7 +1841,7 @@ if(patientForm && !patientForm.__bound){
         const res= await fetch(API_BASE+'/api/ai/summary');
         const data= await res.json();
         if(badge){ badge.textContent= data.ai? 'AI' : 'Heuristic'; badge.classList.toggle('bg-indigo-600', !!data.ai); badge.classList.toggle('text-white', !!data.ai); }
-        sumEl.textContent = data.summary || '(No summary)';
+  sumEl.textContent = safeTextify(data.summary || '(No summary)');
       } catch(e){ console.error('summary', e); sumEl.textContent='Failed to load summary'; }
     }
     async function fetchInsights(){
@@ -1807,16 +1849,65 @@ if(patientForm && !patientForm.__bound){
         const r= await fetch(API_BASE+'/api/insights');
         const d= await r.json();
         // Could render structured insights later (risk patients, inventory issues)
-        window.__insights=d;
+        window.__insights=d; renderStructuredInsights();
       } catch(e){ console.error('insights', e); }
+    }
+    function renderStructuredInsights(){
+      const wrap=document.getElementById('insights-structured'); if(!wrap) return;
+      const data=window.__insights; if(!data){ return; }
+      // Adherence
+      const adhEl=document.getElementById('adherence-summary');
+      const riskUl=document.getElementById('risk-patients');
+      if(adhEl){ const a=data.adherence||{}; adhEl.textContent = a.overall_percent!=null? `Overall adherence: ${a.overall_percent}%` : 'No adherence data'; }
+      if(riskUl){
+        const rp=(data.adherence && data.adherence.risk_patients)||[];
+        if(!rp.length){ riskUl.innerHTML='<li class="text-slate-500 text-[11px]">No risk patients in horizon.</li>'; }
+        else { riskUl.innerHTML= rp.map(p=>`<li class='flex items-center gap-2'><span class='px-2 py-0.5 rounded bg-rose-600/20 text-rose-300 text-[10px]'>Missed ${p.missed}</span><span class='flex-1 truncate'>${escapeHTML(p.name)}</span><button class='text-[10px] px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600' data-explain-risk='${p.patient_id}'>Ask</button></li>`).join(''); }
+      }
+      // Inventory issues
+      const invUl=document.getElementById('inventory-issues');
+      if(invUl){
+        const issues=(data.inventory && data.inventory.issues)||[];
+        if(!issues.length){ invUl.innerHTML='<li class="text-slate-500 text-[11px]">No inventory issues.</li>'; }
+        else { invUl.innerHTML= issues.map(i=>`<li class='flex items-center gap-2'><span class='px-2 py-0.5 rounded ${i.severity==='CRITICAL'?'bg-rose-600/20 text-rose-300':'bg-amber-600/20 text-amber-300'} text-[10px]'>${i.severity}</span><span class='flex-1 truncate'>${escapeHTML(i.name)} (stock ${i.stock}${i.days_supply? ', ~'+i.days_supply+'d':''})</span><button class='text-[10px] px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600' data-explain-inv='${i.drug_id}'>Ask</button></li>`).join(''); }
+      }
+      // Recommendations
+      const recOl=document.getElementById('recommendations-list');
+      if(recOl){
+        const recs=data.recommendations||[];
+        if(!recs.length){ recOl.innerHTML='<li class="text-slate-500 text-[11px] list-none">No recommendations.</li>'; }
+        else { recOl.innerHTML= recs.map((r,idx)=>`<li class='flex items-start gap-2'><span class='flex-1'>${escapeHTML(r)}</span><button class='mt-0.5 text-[10px] px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600' data-explain-rec='${idx}'>Ask</button></li>`).join(''); }
+      }
+      const disc=document.getElementById('insights-disclaimer'); if(disc){ disc.textContent = data.disclaimer||''; }
+    }
+    function crossExamine(kind, id){
+      const data=window.__insights||{};
+      let question='';
+      if(kind==='summary'){
+        question = 'Explain how the current operational summary was produced, citing supporting data and noting uncertainties.';
+      } else if(kind==='challenge'){
+        question = 'Critique the current operational summary: possible overstatements, missing risks, and additional data needed.';
+      } else if(kind==='adherence'){
+        question = 'Explain adherence calculation and main drivers.';
+      } else if(kind==='risk_patient'){
+        const rp=((data.adherence||{}).risk_patients||[]).find(p=> String(p.patient_id)===String(id));
+        question = 'Analyze adherence risk factors for patient id '+id+'.';
+      } else if(kind==='inventory_issue'){
+        const issue=((data.inventory||{}).issues||[]).find(i=> String(i.drug_id)===String(id));
+        question = 'Explain inventory issue and reorder rationale for drug id '+id+'.';
+      } else if(kind==='recommendation'){
+        question = 'Justify recommendation #'+id+' and underlying data.';
+      }
+  if(question && window.askRag){ const inc = document.getElementById('rag-include-context')?.checked || false; askRag(question, inc); }
     }
     function appendChat(role,text){
       const log=document.getElementById('ai-chat-log');
       if(!log) return;
-      const item=document.createElement('div');
+  const item=document.createElement('div');
       item.className='flex items-start gap-2';
-      const badge= role==='user'? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-300';
-      item.innerHTML=`<span class='text-[10px] px-2 py-1 rounded ${badge} capitalize'>${role}</span><div class='flex-1 whitespace-pre-wrap text-slate-300 text-sm'>${escapeHTML(text)}</div>`;
+  const badge= role==='user'? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-300';
+  const renderedMsg = safeTextify(text);
+  item.innerHTML=`<span class='text-[10px] px-2 py-1 rounded ${badge} capitalize'>${role}</span><div class='flex-1 whitespace-pre-wrap text-slate-300 text-sm'>${escapeHTML(renderedMsg)}</div>`;
       log.append(item); log.scrollTop=log.scrollHeight;
     }
     async function sendChat(message){
@@ -1828,12 +1919,71 @@ if(patientForm && !patientForm.__bound){
         appendChat('user', message);
         const res= await fetch(API_BASE+'/api/ai/chat',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({history})});
         const data= await res.json();
-        if(data.reply){ appendChat('assistant', data.reply); window.__aiChatHistory=data.history; }
+  if(data.reply){ appendChat('assistant', data.reply); window.__aiChatHistory=data.history; }
         else { appendChat('assistant', '(No reply)'); }
+        // Automatically offer deeper RAG answer suggestion for analytical queries
+  if(/^(why|how many|list|which)/i.test(message) && window.askRag){
+          const suggest = document.createElement('div');
+          suggest.className='mt-2 text-[11px] text-slate-500';
+          suggest.innerHTML = 'Need a data-grounded answer? <button class="underline text-indigo-400" id="rag-suggest-btn">Run RAG lookup</button>';
+          const log=document.getElementById('ai-chat-log');
+          if(log){ log.lastElementChild && log.lastElementChild.appendChild(suggest); }
+          document.addEventListener('click', function handler(ev){ if(ev.target && ev.target.id==='rag-suggest-btn'){ window.askRag(message); document.removeEventListener('click', handler); } });
+        }
       } catch(e){ console.error('chat', e); appendChat('assistant','Error sending message'); }
       finally { btn.disabled=false; btn.textContent='Send'; }
     }
+    // ---- RAG Answering ----
+    async function askRag(question, includeContext=false){
+      const statusEl=document.getElementById('rag-status');
+      const ansEl=document.getElementById('rag-answer');
+      const ctxEl=document.getElementById('rag-context-keys');
+      statusEl.textContent='Querying…'; ansEl.textContent='';
+      try {
+        const res= await fetch(API_BASE+'/api/ai/answer',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({question, include_context: includeContext})});
+        const data= await res.json();
+        if(!res.ok){ ansEl.textContent = 'Error: '+ (data.answer||data.detail||res.status); statusEl.textContent=''; return; }
+  ansEl.textContent = safeTextify(data.answer || '(No answer)');
+        statusEl.textContent = data.ai? 'AI model response' : 'Heuristic fallback response';
+        if(data.context_keys){ ctxEl.textContent = data.context_keys.join(', '); }
+        if(includeContext && data.context_excerpt){ ctxEl.textContent = (ctxEl.textContent+'\n--- excerpt ---\n'+data.context_excerpt).slice(0,6000); }
+      } catch(e){ console.error('rag answer', e); ansEl.textContent='Failed: '+e; statusEl.textContent=''; }
+    }
+    const ragForm=document.getElementById('rag-form');
+    if(ragForm){
+      ragForm.addEventListener('submit', e=>{
+        e.preventDefault();
+        const inp=document.getElementById('rag-input');
+        const q=(inp.value||'').trim();
+        if(!q) return;
+        inp.value='';
+  const includeCtx=document.getElementById('rag-include-context')?.checked || false;
+  askRag(q, includeCtx);
+      });
+    }
+    const ragToggle=document.getElementById('rag-toggle-context');
+    if(ragToggle){ ragToggle.addEventListener('click', ()=>{ const el=document.getElementById('rag-context-keys'); el.classList.toggle('hidden'); ragToggle.textContent = el.classList.contains('hidden')? 'Show Context Keys':'Hide Context Keys'; }); }
+    // Expose for cross examination follow-up to escalate to RAG if user wants deeper data
+    window.askRag=askRag;
     document.addEventListener('click', e=>{ if(e.target && e.target.id==='insights-refresh'){ fetchInsights(); fetchInsightsSummary(); } });
+    document.addEventListener('click', e=>{
+      const t=e.target;
+      if(!t) return;
+      if(t.id==='insights-toggle-structured'){
+        const wrap=document.getElementById('insights-structured');
+        if(!wrap) return;
+        wrap.classList.toggle('hidden');
+        t.textContent= wrap.classList.contains('hidden')? 'Show Data':'Hide Data';
+        if(!wrap.classList.contains('hidden')) renderStructuredInsights();
+        return;
+      }
+      if(t.id==='insights-explain-summary'){ crossExamine('summary'); return; }
+      if(t.id==='insights-challenge'){ crossExamine('challenge'); return; }
+      if(t.dataset.explainAdherence!==undefined || t.hasAttribute('data-explain-adherence')){ crossExamine('adherence'); return; }
+      if(t.dataset && t.dataset.explainRisk){ crossExamine('risk_patient', t.dataset.explainRisk); return; }
+      if(t.dataset && t.dataset.explainInv){ crossExamine('inventory_issue', t.dataset.explainInv); return; }
+  if(t.dataset && t.dataset.explainRec){ crossExamine('recommendation', parseInt(t.dataset.explainRec,10)); }
+    });
     const chatForm=document.getElementById('ai-chat-form');
     if(chatForm){
       chatForm.addEventListener('submit', e=>{ e.preventDefault(); const input=document.getElementById('ai-chat-input'); const v=(input.value||'').trim(); if(!v){ return; } input.value=''; sendChat(v); });
