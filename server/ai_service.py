@@ -58,7 +58,8 @@ log = logging.getLogger(__name__)
 
 # IMPORTANT: Never embed static API keys in source. Key is supplied at runtime via env var and HTTP header.
 GENAI_ENDPOINT_TMPL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-DEFAULT_MODEL = os.environ.get("AI_MODEL", "gemini-2.0-flash")
+# Default model (override with AI_MODEL in environment / .env). Updated per user request.
+DEFAULT_MODEL = os.environ.get("AI_MODEL", "gemini-2.5-pro")
 
 
 def ai_enabled() -> bool:
