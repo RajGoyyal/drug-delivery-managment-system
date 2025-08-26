@@ -10,11 +10,7 @@
   <meta property="og:title" content="MedDelivery - Drug Delivery Management System" />
   <meta property="og:description" content="Efficient drug delivery management system for healthcare professionals" />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:site" content="@lovable_dev" />
-  <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -25,8 +21,7 @@
       .fade-enter-active { transition: all .25s; opacity:1; transform: translateY(0); }
       .spinner { width:18px; height:18px; border:3px solid rgba(255,255,255,.35); border-top-color: #6366f1; border-radius:50%; animation: spin 0.8s linear infinite; }
       @keyframes spin { to { transform: rotate(360deg);} }
-      .glass { position:relative; background:linear-gradient(155deg, rgba(30,41,59,.92), rgba(15,23,42,.82)); backdrop-filter: blur(22px) saturate(170%); -webkit-backdrop-filter: blur(22px) saturate(170%); border:1px solid rgba(255,255,255,0.06); box-shadow:0 8px 28px -6px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,0.04) inset; overflow:hidden; }
-      .glass::before{content:"";position:absolute;inset:0;background:linear-gradient(160deg,rgba(255,255,255,0.08),rgba(255,255,255,0) 45%);pointer-events:none;}
+  /* Removed glass effect */
       .card-hover { transition: all .45s cubic-bezier(.4,.2,.2,1); }
       .card-hover:hover { transform: translateY(-4px); box-shadow: 0 16px 40px -10px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,0.05) inset; }
       .heading-gradient { background: linear-gradient(92deg,#fff 0%,#93c5fd 40%,#818cf8 60%,#c7d2fe 90%); -webkit-background-clip: text; background-clip:text; color:transparent; }
@@ -41,7 +36,7 @@
       }
   #main-nav { position:relative; z-index:30; }
   .sticky-nav{position:sticky;top:0;z-index:40;padding-top:.5rem;background:linear-gradient(180deg,rgba(15,23,42,.95),rgba(15,23,42,.85));backdrop-filter:blur(14px);}      
-  #nav-indicator { position:absolute; left:0; top:1px; height:36px; border-radius:999px; background:rgba(100,116,139,0.35); backdrop-filter:blur(14px); border:1px solid rgba(255,255,255,0.08); transition: all .5s cubic-bezier(.65,.05,.36,1); box-shadow:0 4px 14px -4px rgba(0,0,0,.55); }
+  /* Removed moving tab indicator */
   .pill-btn { position:relative; z-index:1; display:flex; align-items:center; justify-content:center; height:36px; line-height:1; }
   /* Horizontal nav: keep in one line, allow scroll if overflow */
   .nav-scroll { flex-wrap:nowrap !important; overflow-x:auto; -ms-overflow-style:none; scrollbar-width:none; }
@@ -75,8 +70,7 @@
           <div id="global-search-results" class="hidden absolute z-40 mt-1 inset-x-0 bg-slate-800 border border-slate-700 rounded shadow-lg max-h-72 overflow-auto text-xs"></div>
         </div>
       </header>
-      <nav id="main-nav" class="sticky-nav nav-scroll flex gap-1 text-sm mt-2 p-1 rounded-full bg-slate-800/60 backdrop-blur border border-slate-700/70 relative">
-        <span id="nav-indicator"></span>
+  <nav id="main-nav" class="sticky-nav nav-scroll flex gap-1 text-sm mt-2 p-1 rounded-full bg-slate-800/60 backdrop-blur border border-slate-700/70 relative">
         <button data-tab="dashboard" class="tab-btn pill-btn px-4 rounded-full bg-indigo-600 text-white shadow-inner whitespace-nowrap">Dashboard</button>
         <button data-tab="all-patients" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">All Patients <span class="text-[10px] ml-1 opacity-60" data-count="patients"></span></button>
         <button data-tab="patients" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Add Patient</button>
@@ -93,7 +87,7 @@
       </nav>
 
   <section data-view="dashboard" class="space-y-8">
-    <div class="relative overflow-hidden rounded-2xl glass p-10 card-hover">
+  <div class="relative overflow-hidden rounded-2xl bg-slate-800/70 p-10 card-hover border border-slate-700">
           <div class="absolute inset-0 opacity-[0.15] pointer-events-none" style="background-image: radial-gradient(circle at 25% 15%, #6366f1 0, transparent 60%), radial-gradient(circle at 75% 85%, #0ea5e9 0, transparent 55%);"></div>
           <div class="relative space-y-4">
   <h2 class="text-3xl font-semibold tracking-tight heading-gradient flex items-center gap-3">Welcome back 👋 <button id="refresh-dashboard" class="text-xs px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button></h2>
@@ -106,16 +100,16 @@
         </div>
         <div id="stats" class="grid gap-4 sm:grid-cols-3"></div>
         <!-- Added low stock dashboard container -->
-<div id="low-stock-dash" class="glass rounded-xl p-4 hidden">
+<div id="low-stock-dash" class="rounded-xl p-4 hidden bg-slate-800/70 border border-slate-700">
   <h3 class="text-sm font-medium mb-2">Low Stock</h3>
   <ul id="low-stock-list" class="text-[11px] space-y-1"></ul>
 </div>
         <div class="grid gap-6 md:grid-cols-2">
-          <div id="status-distribution" class="glass rounded-xl p-5 card-hover hidden">
+          <div id="status-distribution" class="rounded-xl p-5 card-hover hidden bg-slate-800/70 border border-slate-700">
             <div class="flex items-center justify-between mb-3"><h3 class="text-sm font-medium flex items-center gap-2">Delivery Status Distribution <span id="dist-total" class="text-[11px] font-normal text-slate-400"></span></h3><canvas id="dist-chart" width="120" height="120" class="w-16 h-16"></canvas></div>
             <div id="dist-bars" class="space-y-3"></div>
           </div>
-          <div id="activity-panel" class="glass rounded-xl p-5 flex flex-col card-hover">
+          <div id="activity-panel" class="rounded-xl p-5 flex flex-col card-hover bg-slate-800/70 border border-slate-700">
             <div class="flex items-center mb-3 gap-2"><h3 class="text-sm font-medium flex-1">Recent Activity</h3><input id="activity-search" placeholder="Filter" class="text-[11px] px-2 py-1 rounded bg-slate-700 border border-slate-600 w-32" /><button id="clear-activity" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600">Clear</button></div>
             <div id="activity-empty" class="text-[11px] text-slate-500">No activity yet. Actions you take will appear here.</div>
             <ul id="activity-log" class="space-y-2 text-[11px] overflow-auto max-h-64 soft-scroll"></ul>
@@ -277,7 +271,7 @@
       </section>
 
       <!-- All Patients Overview -->
-      <section data-view="all-patients" class="glass rounded-xl p-6 space-y-4 hidden">
+  <section data-view="all-patients" class="rounded-xl p-6 space-y-4 hidden bg-slate-800/70 border border-slate-700">
         <div class="flex flex-col sm:flex-row sm:items-center gap-3">
           <h2 class="text-lg font-semibold heading-gradient flex items-center gap-3">All Patients <button id="refresh-all-patients" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button></h2>
           <div class="flex items-center gap-2 ml-auto">
@@ -311,7 +305,7 @@
       </section>
 
       <!-- All Drugs Overview -->
-      <section data-view="all-drugs" class="glass rounded-xl p-6 space-y-4 hidden">
+  <section data-view="all-drugs" class="rounded-xl p-6 space-y-4 hidden bg-slate-800/70 border border-slate-700">
         <div class="flex flex-col sm:flex-row sm:items-center gap-3">
           <h2 class="text-lg font-semibold heading-gradient flex items-center gap-3">All Drugs <button id="refresh-all-drugs" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button></h2>
           <div class="flex items-center gap-2 ml-auto">
@@ -349,7 +343,7 @@
       </section>
 
       <!-- All Deliveries Overview -->
-      <section data-view="all-deliveries" class="glass rounded-xl p-6 space-y-4 hidden">
+  <section data-view="all-deliveries" class="rounded-xl p-6 space-y-4 hidden bg-slate-800/70 border border-slate-700">
         <div class="flex flex-col sm:flex-row sm:items-center gap-3">
           <h2 class="text-lg font-semibold heading-gradient flex items-center gap-3">All Deliveries <button id="refresh-all-deliveries" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button></h2>
           <div class="flex items-center gap-2 ml-auto">
@@ -710,7 +704,7 @@
             {label:'Deliveries', value:data.deliveries},
             {label:'Low Stock', value:data.low_stock_drugs}
           ];
-          items.forEach(it=>{ const card=document.createElement('div'); card.className='glass rounded-xl p-4 flex flex-col gap-1 card-hover'; card.innerHTML=`<span class="text-[11px] uppercase tracking-wide text-slate-400">${it.label}</span><span class="text-xl font-semibold">${it.value}</span>`; statsBox.append(card); });
+          items.forEach(it=>{ const card=document.createElement('div'); card.className='rounded-xl p-4 flex flex-col gap-1 card-hover bg-slate-800/70 border border-slate-700'; card.innerHTML=`<span class="text-[11px] uppercase tracking-wide text-slate-400">${it.label}</span><span class="text-xl font-semibold">${it.value}</span>`; statsBox.append(card); });
           // low stock list
           const lowWrap=document.getElementById('low-stock-dash');
           const list=document.getElementById('low-stock-list');
@@ -1225,17 +1219,7 @@ if(patientForm && !patientForm.__bound){
         }
       });
       savePref('activeTab', name);
-      // Move nav indicator (new design)
-      try {
-        const ind=document.getElementById('nav-indicator');
-        const activeBtn=[...tabButtons].find(b=> b.getAttribute('data-tab')===name);
-        if(ind && activeBtn){
-          const rect=activeBtn.getBoundingClientRect();
-          const parentRect=activeBtn.parentElement.getBoundingClientRect();
-          ind.style.width=rect.width+'px';
-          ind.style.transform=`translateX(${rect.left-parentRect.left}px)`;
-        }
-      } catch{}
+  // Indicator removed; simplified active state only
   if(name==='all-patients') renderAllPatients();
   else if(name==='all-drugs') renderAllDrugs();
   else if(name==='all-deliveries') renderAllDeliveries();
