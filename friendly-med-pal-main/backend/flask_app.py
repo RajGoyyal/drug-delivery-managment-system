@@ -1,12 +1,14 @@
 import sqlite3
 from pathlib import Path
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
 DB_PATH = Path(__file__).resolve().parent / 'drug_delivery.db'
 
-app = Flask(__name__, static_folder=str(Path(__file__).resolve().parent.parent), static_url_path='')
+APP_ROOT = Path(__file__).resolve().parent.parent
+INDEX_HTML_NAME = 'index.html'
+app = Flask(__name__, static_folder=str(APP_ROOT), static_url_path='')
 CORS(app)
 
 ALLOWED_STATUSES = {"pending","delivered","missed","cancelled"}
@@ -215,36 +217,50 @@ def list_removals():
 # --- Stats / Health ---------------------------------------------------------
 @app.get('/api/stats')
 def stats():
+    # Provide both the legacy keys the current frontend expects (patients, drugs, deliveries, low_stock_drugs, low_stock_list)
+    # and the richer analytics style keys for future use / backwards compatibility.
     conn=get_conn(); cur=conn.execute('SELECT COUNT(*) FROM patients'); patients=cur.fetchone()[0]
     cur=conn.execute('SELECT COUNT(*) FROM drugs'); drugs=cur.fetchone()[0]
+    cur=conn.execute('SELECT COUNT(*) FROM delivery_logs'); deliveries=cur.fetchone()[0]
     today=date.today().isoformat()
     cur=conn.execute("SELECT COUNT(*) FROM delivery_logs WHERE status='pending'"); pending=cur.fetchone()[0]
     cur=conn.execute("SELECT COUNT(*) FROM delivery_logs WHERE status='delivered' AND delivery_date=?",(today,)); completed=cur.fetchone()[0]
     cur=conn.execute("SELECT COUNT(*) FROM delivery_logs WHERE status='missed'"); missed=cur.fetchone()[0]
     cur=conn.execute("SELECT COUNT(*) FROM delivery_logs WHERE status='pending' AND delivery_date>=?",(today,)); upcoming=cur.fetchone()[0]
+    # Low stock list
+    cur=conn.execute("SELECT id,name,stock,reorder_level FROM drugs WHERE COALESCE(stock,0) <= COALESCE(reorder_level,0)")
+    low_stock_list: list[dict[str,int|str]]=[{'id':int(r[0]),'name':str(r[1]),'stock':int(r[2] or 0),'reorder_level':int(r[3] or 0)} for r in cur.fetchall()]
     conn.close()
     return jsonify({
-        'totalPatients':patients,
-        'totalDrugs':drugs,
-        'pendingDeliveries':pending,
-        'completedToday':completed,
-        'missedDeliveries':missed,
-        'upcomingDeliveries':upcoming
+        # Legacy/simple dashboard keys
+        'patients': patients,
+        'drugs': drugs,
+        'deliveries': deliveries,
+        'low_stock_drugs': len(low_stock_list),
+        'low_stock_list': low_stock_list,
+        # Extended analytics keys
+        'totalPatients': patients,
+        'totalDrugs': drugs,
+        'pendingDeliveries': pending,
+        'completedToday': completed,
+        'missedDeliveries': missed,
+        'upcomingDeliveries': upcoming
     })
 
 @app.get('/api/health')
 def health():
-    return jsonify({'status':'ok','time': datetime.utcnow().isoformat()})
+    return jsonify({'status':'ok','time': datetime.now(timezone.utc).isoformat()})
 
 # --- SPA index passthrough --------------------------------------------------
 @app.get('/')
 def root():
     """Serve built frontend if present, else fallback to original index.html at repo root."""
-    repo_root = Path(__file__).resolve().parent.parent
-    dist_index = repo_root / 'dist' / 'index.html'
+    repo_root = APP_ROOT
+    dist_index = repo_root / 'dist' / INDEX_HTML_NAME
     if dist_index.exists():
-        return send_from_directory(dist_index.parent, 'index.html')
-    return send_from_directory(repo_root, 'index.html')
+        return send_from_directory(dist_index.parent, INDEX_HTML_NAME)
+    return send_from_directory(repo_root, INDEX_HTML_NAME)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # Use port 8000 to align with frontend default API_BASE detection.
+    app.run(debug=True, port=8000)

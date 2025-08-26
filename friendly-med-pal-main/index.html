@@ -74,8 +74,8 @@
         <button data-tab="dashboard" class="tab-btn pill-btn px-4 rounded-full bg-indigo-600 text-white shadow-inner whitespace-nowrap">Dashboard</button>
         <button data-tab="all-patients" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">All Patients <span class="text-[10px] ml-1 opacity-60" data-count="patients"></span></button>
         <button data-tab="patients" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Add Patient</button>
-        <button data-tab="all-drugs" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">All Drugs <span class="text-[10px] ml-1 opacity-60" data-count="drugs"></span></button>
-        <button data-tab="drugs" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Add Drug</button>
+  <!-- Removed All Drugs tab (overview merged into Inventory) -->
+  <!-- Merged Add Drug into Inventory: removed separate Add Drug tab -->
         <button data-tab="all-deliveries" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">All Deliveries <span class="text-[10px] ml-1 opacity-60" data-count="deliveries"></span></button>
   <button data-tab="deliveries" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Schedule</button>
   <button data-tab="inventory" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Inventory</button>
@@ -133,35 +133,7 @@
     <ul id="patient-list" class="text-xs space-y-1 max-h-48 overflow-auto divide-y divide-slate-100"></ul>
       </section>
 
-      <!-- Drugs View -->
-  <section data-view="drugs" class="bg-slate-800 border border-slate-700 rounded-lg shadow p-5 space-y-4 hidden">
-  <h2 class="font-semibold flex items-center gap-2">Drugs <input id="drug-filter" placeholder="Filter" class="ml-3 flex-1 max-w-[160px] text-xs border border-slate-600 rounded px-2 py-1 bg-slate-700 placeholder-slate-400 text-slate-100" /><button id="refresh-drugs" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button><button id="export-drugs" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600 ml-auto">Export</button></h2>
-          <form id="drug-form" class="grid gap-3 text-sm">
-            <input name="name" required placeholder="Name" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
-            <input name="dosage" placeholder="Dosage" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
-            <input name="stock" type="number" min="0" placeholder="Stock" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
-            <input name="reorder_level" type="number" min="0" placeholder="Reorder Level" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
-            <div class="flex items-center gap-2 mt-1">
-              <button type="button" id="drug-batch-toggle" class="text-[11px] px-2 py-1 rounded bg-slate-600 hover:bg-slate-500 border border-slate-500">Batch Details</button>
-              <span class="text-[11px] text-slate-400">Provide batch metadata when adding initial stock.</span>
-            </div>
-            <div id="drug-batch-extra" class="grid gap-3 md:grid-cols-2 hidden bg-slate-700/30 p-3 rounded border border-slate-600/60">
-              <input name="batch_no" placeholder="Batch No *" class="border border-slate-600 rounded px-3 py-2 bg-slate-800 placeholder-slate-400 text-slate-100" />
-              <input name="isbn" placeholder="ISBN" class="border border-slate-600 rounded px-3 py-2 bg-slate-800 placeholder-slate-400 text-slate-100" />
-              <input name="producer" placeholder="Producer" class="border border-slate-600 rounded px-3 py-2 bg-slate-800 placeholder-slate-400 text-slate-100" />
-              <input name="transporter" placeholder="Transporter" class="border border-slate-600 rounded px-3 py-2 bg-slate-800 placeholder-slate-400 text-slate-100" />
-              <label class="flex flex-col gap-1 text-[11px]">Mfg Date <input type="date" name="mfg_date" class="border border-slate-600 rounded px-2 py-1 bg-slate-800 text-slate-100" /></label>
-              <label class="flex flex-col gap-1 text-[11px]">Exp Date <input type="date" name="exp_date" class="border border-slate-600 rounded px-2 py-1 bg-slate-800 text-slate-100" /></label>
-              <textarea name="batch_notes" rows="2" placeholder="Batch Notes" class="md:col-span-2 border border-slate-600 rounded px-3 py-2 bg-slate-800 placeholder-slate-400 text-slate-100 resize-y"></textarea>
-              <div class="md:col-span-2 text-[10px] text-slate-400">If you enter an initial Stock value, batch details are required (at least Batch No). Stock will be added via batch record.</div>
-            </div>
-            <div class="flex items-center gap-3">
-              <button class="bg-indigo-600 hover:bg-indigo-500 text-white rounded px-4 py-2 font-medium disabled:opacity-50 flex items-center gap-2" id="drug-submit"><span>Add Drug</span><span class="hidden spinner" id="drug-spinner"></span></button>
-              <p class="text-xs text-red-500" id="drug-error"></p>
-            </div>
-          </form>
-    <ul id="drug-list" class="text-xs space-y-1 max-h-48 overflow-auto divide-y divide-slate-100"></ul>
-      </section>
+  <!-- (Removed separate Drugs View: merged into Inventory section) -->
 
       <!-- Deliveries View -->
   <section data-view="deliveries" class="bg-slate-800 border border-slate-700 rounded-lg shadow p-5 space-y-4 hidden">
@@ -388,43 +360,7 @@
         <div id="all-patients-empty" class="text-[11px] text-slate-500"></div>
       </section>
 
-      <!-- All Drugs Overview -->
-  <section data-view="all-drugs" class="rounded-xl p-6 space-y-4 hidden bg-slate-800/70 border border-slate-700">
-        <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-          <h2 class="text-lg font-semibold heading-gradient flex items-center gap-3">All Drugs <button id="refresh-all-drugs" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button></h2>
-          <div class="flex items-center gap-2 ml-auto">
-            <input id="all-drugs-search" placeholder="Search" class="bg-slate-900/40 border border-slate-600 rounded px-2 py-1 text-xs placeholder-slate-500" />
-            <button id="export-all-drugs" class="text-[10px] px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Export All</button>
-            <button id="export-all-drugs-filtered" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-200">Export Filtered</button>
-            <select id="all-drugs-pagesize" class="bg-slate-900/40 border border-slate-600 rounded px-2 py-1 text-[10px]">
-              <option>25</option><option>50</option><option>100</option>
-            </select>
-          </div>
-        </div>
-        <div class="overflow-auto soft-scroll max-h-[60vh] rounded-lg border border-slate-700/70">
-          <table class="w-full text-left text-xs" id="tbl-all-drugs">
-            <thead class="bg-slate-800/60 sticky top-0 backdrop-blur select-none">
-              <tr class="text-slate-400">
-                <th data-sort="id" class="py-2 px-3 font-medium cursor-pointer">ID</th>
-                <th data-sort="name" class="py-2 px-3 font-medium cursor-pointer">Name</th>
-                <th data-sort="dosage" class="py-2 px-3 font-medium cursor-pointer">Dosage</th>
-                <th data-sort="stock" class="py-2 px-3 font-medium cursor-pointer">Stock</th>
-                <th data-sort="reorder_level" class="py-2 px-3 font-medium cursor-pointer">Reorder</th>
-                <th data-sort="pending_quantity" class="py-2 px-3 font-medium cursor-pointer">Pend Qty</th>
-                <th data-sort="daily_avg" class="py-2 px-3 font-medium cursor-pointer">Daily Avg</th>
-                <th data-sort="days_supply" class="py-2 px-3 font-medium cursor-pointer">Days Supply</th>
-                <th class="py-2 px-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody id="all-drugs-body" class="divide-y divide-slate-800"></tbody>
-          </table>
-        </div>
-        <div class="flex items-center justify-between text-[10px] mt-1">
-          <div id="all-drugs-info" class="text-slate-400"></div>
-          <div class="flex gap-1" id="all-drugs-pager"></div>
-        </div>
-        <div id="all-drugs-empty" class="text-[11px] text-slate-500"></div>
-      </section>
+  <!-- (Removed standalone All Drugs section: now embedded in Inventory) -->
 
       <!-- All Deliveries Overview -->
   <section data-view="all-deliveries" class="rounded-xl p-6 space-y-4 hidden bg-slate-800/70 border border-slate-700">
@@ -495,7 +431,45 @@
           <div id="inv-metrics" class="flex flex-wrap gap-2 text-[10px]"></div>
           <button id="inv-refresh" class="text-[11px] px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Refresh</button>
           <button id="inv-export" class="text-[11px] px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600">Export CSV</button>
+          <button id="inv-add-drug-jump" class="text-[11px] px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white" title="Open Add Drug">+ Drug</button>
         </div>
+        <!-- Inline Add Drug Panel (merged) -->
+        <details id="inv-add-drug-panel" class="rounded-lg border border-slate-700/70 bg-slate-900/40 p-4 space-y-4">
+          <summary class="cursor-pointer list-none flex items-center gap-3 text-sm font-medium">
+            <span class="flex items-center gap-2"><span class="inline-block w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>Add New Drug</span>
+            <span class="text-[11px] text-slate-400 font-normal">(Form from merged Drugs view)</span>
+          </summary>
+          <div class="flex flex-wrap items-center gap-2 text-[11px]">
+            <input id="drug-filter" placeholder="Filter" class="px-2 py-1 rounded bg-slate-700 border border-slate-600 w-40" />
+            <button id="refresh-drugs" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button>
+            <button id="export-drugs" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Export</button>
+          </div>
+          <form id="drug-form" class="grid gap-3 md:grid-cols-2 text-sm">
+            <input name="name" required placeholder="Name" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100 md:col-span-1" />
+            <input name="dosage" placeholder="Dosage" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100 md:col-span-1" />
+            <input name="stock" type="number" min="0" placeholder="Initial Stock" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
+            <input name="reorder_level" type="number" min="0" placeholder="Reorder Level" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
+            <div class="md:col-span-2 flex items-center gap-2 mt-1">
+              <button type="button" id="drug-batch-toggle" class="text-[11px] px-2 py-1 rounded bg-slate-600 hover:bg-slate-500 border border-slate-500">Batch Details</button>
+              <span class="text-[11px] text-slate-400">Provide batch metadata when adding initial stock.</span>
+            </div>
+            <div id="drug-batch-extra" class="md:col-span-2 grid gap-3 md:grid-cols-2 hidden bg-slate-700/30 p-3 rounded border border-slate-600/60">
+              <input name="batch_no" placeholder="Batch No *" class="border border-slate-600 rounded px-3 py-2 bg-slate-800 placeholder-slate-400 text-slate-100" />
+              <input name="isbn" placeholder="ISBN" class="border border-slate-600 rounded px-3 py-2 bg-slate-800 placeholder-slate-400 text-slate-100" />
+              <input name="producer" placeholder="Producer" class="border border-slate-600 rounded px-3 py-2 bg-slate-800 placeholder-slate-400 text-slate-100" />
+              <input name="transporter" placeholder="Transporter" class="border border-slate-600 rounded px-3 py-2 bg-slate-800 placeholder-slate-400 text-slate-100" />
+              <label class="flex flex-col gap-1 text-[11px]">Mfg Date <input type="date" name="mfg_date" class="border border-slate-600 rounded px-2 py-1 bg-slate-800 text-slate-100" /></label>
+              <label class="flex flex-col gap-1 text-[11px]">Exp Date <input type="date" name="exp_date" class="border border-slate-600 rounded px-2 py-1 bg-slate-800 text-slate-100" /></label>
+              <textarea name="batch_notes" rows="2" placeholder="Batch Notes" class="md:col-span-2 border border-slate-600 rounded px-3 py-2 bg-slate-800 placeholder-slate-400 text-slate-100 resize-y"></textarea>
+              <div class="md:col-span-2 text-[10px] text-slate-400">If you enter an Initial Stock value, batch details are required (at least Batch No). Stock will be added via batch record.</div>
+            </div>
+            <div class="md:col-span-2 flex items-center gap-3">
+              <button class="bg-indigo-600 hover:bg-indigo-500 text-white rounded px-4 py-2 font-medium disabled:opacity-50 flex items-center gap-2" id="drug-submit"><span>Add Drug</span><span class="hidden spinner" id="drug-spinner"></span></button>
+              <p class="text-xs text-red-500" id="drug-error"></p>
+            </div>
+          </form>
+          <ul id="drug-list" class="text-xs space-y-1 max-h-40 overflow-auto divide-y divide-slate-700/60"></ul>
+        </details>
         <div class="grid gap-6 lg:grid-cols-3 items-start">
           <!-- Left side: controls, table, pagination, modals triggers (spans 2 columns) -->
           <div class="flex flex-col gap-3 lg:col-span-2">
@@ -676,6 +650,8 @@
     </div>
 
     <script>
+      // Global early flags (avoid temporal dead zone in later handlers)
+      let inventoryBooted = false;
       // Adaptive API base detection
       let API_BASE = localStorage.getItem('apiBase') || 'http://127.0.0.1:8000';
       async function probe(url){
@@ -814,27 +790,28 @@
         const url = (path.startsWith('http')? path : API_BASE + path);
         const controller = new AbortController();
         const t=setTimeout(()=> controller.abort(), 8000);
-        let res;
+        let res; const started=Date.now();
         try {
           res = await fetch(url, {headers:{'Content-Type':'application/json'}, signal:controller.signal, ...opts});
         } catch(e){
           updateAPIIndicator('network error','error');
+          console.error('[call] network error', {path, url, error:e});
           throw new Error('Network error while calling '+path+': '+e.message);
         } finally { clearTimeout(t); }
         if(!res.ok){
           let msg;
           try { msg = (await res.json()).detail || await res.text(); } catch { msg = res.statusText; }
+          console.error('[call] http error', {path, url, status:res.status, message:msg});
           throw new Error('HTTP '+res.status+' '+msg+' ['+path+']');
         }
         updateAPIIndicator('', 'ok');
         if(res.status===204) return null;
         const ct = res.headers.get('content-type')||'';
         if(!ct.includes('application/json')){
-          // Try text fallback
-            try { return await res.text(); } catch { return null; }
+          try { const txt= await res.text(); console.warn('[call] non-json response', {path, url, time:Date.now()-started}); return txt; } catch { return null; }
         }
-        try { return await res.json(); }
-        catch(e){ throw new Error('Invalid JSON from '+path+': '+e.message); }
+        try { const json= await res.json(); return json; }
+        catch(e){ console.error('[call] json parse error', {path, url, error:e}); throw new Error('Invalid JSON from '+path+': '+e.message); }
        }
 
       function stat(label, value){
@@ -847,9 +824,9 @@
       async function loadStats(){
         try {
           const data= await call('/api/stats');
-          document.querySelector('[data-count="patients"]').textContent=data.patients;
-          document.querySelector('[data-count="drugs"]').textContent=data.drugs;
-          document.querySelector('[data-count="deliveries"]').textContent=data.deliveries;
+          const elP=document.querySelector('[data-count="patients"]'); if(elP) elP.textContent=data.patients;
+          const elD=document.querySelector('[data-count="drugs"]'); if(elD) elD.textContent=data.drugs;
+          const elDel=document.querySelector('[data-count="deliveries"]'); if(elDel) elDel.textContent=data.deliveries;
           const statsBox=document.getElementById('stats');
           statsBox.innerHTML='';
           const items=[
@@ -973,7 +950,15 @@
       function confirmAction(msg){ return window.confirm(msg); }
 
       async function refreshPatients(){
-        const pts = await call('/api/patients');
+        console.debug('[refreshPatients] start', {API_BASE});
+        let pts=[];
+        try {
+          pts = await call('/api/patients');
+        } catch(e){
+          console.error('[refreshPatients] failed', e);
+          toast('Failed loading patients: '+ e.message, 'error');
+          return;
+        }
         window.__patients = pts;
         const list = document.getElementById('patient-list');
         list.innerHTML='';
@@ -1036,8 +1021,20 @@
 
   function renderDeliveries(){ /* deliveries list rebuilt inside refreshDeliveries */ }
 
+  // Provide no-op stubs for legacy overview renderers (in case still referenced)
+  if(typeof window.renderAllPatients !== 'function') { window.renderAllPatients = function(){}; }
+  if(typeof window.renderAllDeliveries !== 'function') { window.renderAllDeliveries = function(){}; }
+
       async function refreshDrugs(){
-        const drugs = await call('/api/drugs');
+        console.debug('[refreshDrugs] start', {API_BASE});
+        let drugs=[];
+        try {
+          drugs = await call('/api/drugs');
+        } catch(e){
+          console.error('[refreshDrugs] failed', e);
+          toast('Failed loading drugs: '+ e.message, 'error');
+          return;
+        }
         window.__drugs = drugs;
         const list = document.getElementById('drug-list');
         list.innerHTML='';
@@ -1482,8 +1479,11 @@
       savePref('activeTab', name);
   // Indicator removed; simplified active state only
   if(name==='all-patients') renderAllPatients();
-  else if(name==='all-drugs') renderAllDrugs();
   else if(name==='all-deliveries') renderAllDeliveries();
+  else if(name==='inventory') {
+    const addPanel=document.getElementById('inv-add-drug-panel');
+    if(addPanel && !addPanel.hasAttribute('data-opened-once')){ addPanel.open=true; addPanel.setAttribute('data-opened-once','1'); }
+  }
     }
     tabButtons.forEach(b=> b.addEventListener('click', ()=> activateTab(b.getAttribute('data-tab'))));
       document.getElementById('seed-btn').addEventListener('click', async ()=>{
@@ -1499,6 +1499,9 @@
   function downloadFile(name, content){ const blob=new Blob([content],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
   document.getElementById('export-patients').addEventListener('click', ()=>{ if(!window.__patients){ toast('No data','error'); return; } downloadFile('patients.csv', toCSV(window.__patients)); });
   document.getElementById('export-drugs').addEventListener('click', ()=>{ if(!window.__drugs){ toast('No data','error'); return; } downloadFile('drugs.csv', toCSV(window.__drugs)); });
+  // Inventory quick add drug jump
+  const addDrugJump=document.getElementById('inv-add-drug-jump');
+  if(addDrugJump){ addDrugJump.addEventListener('click', ()=>{ activateTab('inventory'); const p=document.getElementById('inv-add-drug-panel'); if(p){ p.open=true; p.scrollIntoView({behavior:'smooth', block:'start'}); } }); }
   document.getElementById('export-deliveries').addEventListener('click', ()=>{ if(!window.__deliveries){ toast('No data','error'); return; } downloadFile('deliveries.csv', toCSV(window.__deliveries)); });
   document.getElementById('toggle-overdue').addEventListener('click', (e)=>{ overdueOnly=!overdueOnly; e.target.classList.toggle('bg-red-600/40', overdueOnly); e.target.classList.toggle('text-red-300', overdueOnly); refreshDeliveries(); });
   document.getElementById('export-all').addEventListener('click', ()=>{ const parts=[]; if(window.__patients){ parts.push({name:'patients', rows:window.__patients}); } if(window.__drugs){ parts.push({name:'drugs', rows:window.__drugs}); } if(window.__deliveries){ parts.push({name:'deliveries', rows:window.__deliveries}); } if(!parts.length){ toast('No data','error'); return; } parts.forEach(p=> downloadFile(p.name+'.csv', toCSV(p.rows))); });
@@ -1649,51 +1652,6 @@
         updateCounts();
         document.querySelectorAll('#tbl-all-patients thead th').forEach(th=> sortIndicator(th, th.dataset.sort===st.sortKey, st.sortDir));
       }
-      function renderAllDrugs(){
-        const body=document.getElementById('all-drugs-body');
-        if(!body){ return; }
-        const empty=document.getElementById('all-drugs-empty');
-        const info=document.getElementById('all-drugs-info');
-        const pagerEl=document.getElementById('all-drugs-pager');
-        const st=overviewState.drugs;
-        st.pageSize=Number(document.getElementById('all-drugs-pagesize').value)||25;
-        st.search=(document.getElementById('all-drugs-search').value||'').toLowerCase();
-        // Build summary map from inventoryState if available
-        let summaryMap=new Map();
-        if(window.inventoryState && Array.isArray(inventoryState.summary)){
-          inventoryState.summary.forEach(s=> summaryMap.set(s.id,s));
-        }
-        let rows=(window.__drugs||[]).map(d=> ({
-          ...d,
-          ...(summaryMap.get(d.id)||{})
-        })).filter(d=> !st.search || d.name.toLowerCase().includes(st.search) || (d.dosage||'').toLowerCase().includes(st.search) || String(d.id)===st.search);
-        rows=applySort(rows, st.sortKey, st.sortDir);
-        const total=rows.length;
-        rows=slicePage(rows, st.page, st.pageSize);
-        body.innerHTML=rows.map(d=>{
-          const low = (d.stock??0) <= (d.reorder_level??0);
-          const pending = d.pending_quantity ?? 0;
-          const daily = d.daily_avg ?? 0;
-          const daysSupply = d.days_supply ?? (daily? Math.round((d.stock||0)/daily): '—');
-          const status = low? '<span class="px-2 py-0.5 rounded text-[10px] bg-red-600/30 text-red-300 font-medium">Low</span>' : '<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-600/30 text-emerald-300 font-medium">OK</span>';
-          return `<tr class='hover:bg-slate-700/40 transition'>
-            <td class='px-3 py-2 font-medium text-slate-300'>${d.id}</td>
-            <td class='px-3 py-2'>${escapeHTML(d.name)}</td>
-            <td class='px-3 py-2 text-slate-400'>${d.dosage? escapeHTML(d.dosage):'—'}</td>
-            <td class='px-3 py-2 text-slate-400'>${d.stock??0}</td>
-            <td class='px-3 py-2 text-slate-400'>${d.reorder_level??0}</td>
-            <td class='px-3 py-2 text-slate-400'>${pending}</td>
-            <td class='px-3 py-2 text-slate-400'>${daily||'—'}</td>
-            <td class='px-3 py-2 text-slate-400'>${daysSupply}</td>
-            <td class='px-3 py-2'>${status}</td>
-          </tr>`;
-        }).join('');
-        empty.textContent= total? '' : 'No drugs found';
-        info.textContent= total? `Showing ${(st.page-1)*st.pageSize+1}-${Math.min(total, st.page*st.pageSize)} of ${total}` : '';
-        pager(total, st.page, st.pageSize, pagerEl, 'drugs', renderAllDrugs);
-        updateCounts();
-        document.querySelectorAll('#tbl-all-drugs thead th').forEach(th=> sortIndicator(th, th.dataset.sort===st.sortKey, st.sortDir));
-      }
       function renderAllDeliveries(){
         const body=document.getElementById('all-deliveries-body');
         if(!body){ return; }
@@ -1748,13 +1706,13 @@
         if(master){ master.checked = count>0 && rows.every(r=> st.selected.has(r.id)); }
       }
   // Debounced search & page size
-  const debouncedOverviewSearch = debounce(()=>{ overviewState.patients.page=1; overviewState.drugs.page=1; overviewState.deliveries.page=1; renderAllPatients(); renderAllDrugs(); renderAllDeliveries(); },250);
+  const debouncedOverviewSearch = debounce(()=>{ overviewState.patients.page=1; overviewState.drugs.page=1; overviewState.deliveries.page=1; renderAllPatients(); renderAllDeliveries(); },250);
   document.addEventListener('input', e=>{
-        if(['all-patients-search','all-drugs-search','all-deliveries-search','deliveries-date-from','deliveries-date-to'].includes(e.target.id)){
+        if(['all-patients-search','all-deliveries-search','deliveries-date-from','deliveries-date-to'].includes(e.target.id)){
           debouncedOverviewSearch();
         }
-        if(['all-patients-pagesize','all-drugs-pagesize','all-deliveries-pagesize'].includes(e.target.id)){
-          overviewState.patients.page=1; overviewState.drugs.page=1; overviewState.deliveries.page=1; renderAllPatients(); renderAllDrugs(); renderAllDeliveries();
+        if(['all-patients-pagesize','all-deliveries-pagesize'].includes(e.target.id)){
+          overviewState.patients.page=1; overviewState.drugs.page=1; overviewState.deliveries.page=1; renderAllPatients(); renderAllDeliveries();
         }
         if(e.target.id==='activity-search'){
           const term=e.target.value.toLowerCase();
@@ -1764,28 +1722,32 @@
       });
   // Sorting handlers
   document.addEventListener('click', e=>{
-        const th=e.target.closest('#tbl-all-patients th[data-sort], #tbl-all-drugs th[data-sort], #tbl-all-deliveries th[data-sort]');
+  const th=e.target.closest('#tbl-all-patients th[data-sort], #tbl-all-deliveries th[data-sort]');
         if(!th){ return; }
         const tableId=th.closest('table').id;
         let group;
         if(tableId==='tbl-all-patients'){ group='patients'; }
-        else if(tableId==='tbl-all-drugs'){ group='drugs'; }
         else { group='deliveries'; }
         const key=th.dataset.sort;
         const st=overviewState[group];
         if(st.sortKey===key){ st.sortDir= st.sortDir==='asc' ? 'desc' : 'asc'; }
         else { st.sortKey=key; st.sortDir='asc'; }
         st.page=1;
-        if(group==='patients'){ renderAllPatients(); }
-        else if(group==='drugs'){ renderAllDrugs(); }
-        else { renderAllDeliveries(); }
+  if(group==='patients'){ renderAllPatients(); }
+  else { renderAllDeliveries(); }
       });
-  document.getElementById('export-all-patients').addEventListener('click', ()=>{ if(!window.__patients){ toast('No data','error'); return; } downloadFile('patients.csv', toCSV(window.__patients)); });
-  document.getElementById('export-all-patients-filtered').addEventListener('click', ()=>{ const st=overviewState.patients; const term=st.search; const rows=(window.__patients||[]).filter(p=> !term || p.name.toLowerCase().includes(term) || (p.condition||'').toLowerCase().includes(term) || String(p.id)===term); downloadFile('patients_filtered.csv', toCSV(rows)); });
-      document.getElementById('export-all-drugs').addEventListener('click', ()=>{ if(!window.__drugs){ toast('No data','error'); return; } downloadFile('drugs.csv', toCSV(window.__drugs)); });
-  document.getElementById('export-all-drugs-filtered').addEventListener('click', ()=>{ const st=overviewState.drugs; const term=st.search; const rows=(window.__drugs||[]).filter(d=> !term || d.name.toLowerCase().includes(term) || (d.dosage||'').toLowerCase().includes(term) || String(d.id)===term); downloadFile('drugs_filtered.csv', toCSV(rows)); });
-      document.getElementById('export-all-deliveries').addEventListener('click', ()=>{ if(!window.__deliveries){ toast('No data','error'); return; } downloadFile('deliveries.csv', toCSV(window.__deliveries)); });
-  document.getElementById('export-all-deliveries-filtered').addEventListener('click', ()=>{
+  const btnExpAllPatients = document.getElementById('export-all-patients');
+  if(btnExpAllPatients) btnExpAllPatients.addEventListener('click', ()=>{ if(!window.__patients){ toast('No data','error'); return; } downloadFile('patients.csv', toCSV(window.__patients)); });
+  const btnExpAllPatientsFiltered = document.getElementById('export-all-patients-filtered');
+  if(btnExpAllPatientsFiltered) btnExpAllPatientsFiltered.addEventListener('click', ()=>{ const st=overviewState.patients; const term=st.search; const rows=(window.__patients||[]).filter(p=> !term || p.name.toLowerCase().includes(term) || (p.condition||'').toLowerCase().includes(term) || String(p.id)===term); downloadFile('patients_filtered.csv', toCSV(rows)); });
+  const btnExpAllDrugs = document.getElementById('export-all-drugs');
+  if(btnExpAllDrugs) btnExpAllDrugs.addEventListener('click', ()=>{ if(!window.__drugs){ toast('No data','error'); return; } downloadFile('drugs.csv', toCSV(window.__drugs)); });
+  const btnExpAllDrugsFiltered = document.getElementById('export-all-drugs-filtered');
+  if(btnExpAllDrugsFiltered) btnExpAllDrugsFiltered.addEventListener('click', ()=>{ const st=overviewState.drugs; const term=st.search; const rows=(window.__drugs||[]).filter(d=> !term || d.name.toLowerCase().includes(term) || (d.dosage||'').toLowerCase().includes(term) || String(d.id)===term); downloadFile('drugs_filtered.csv', toCSV(rows)); });
+  const btnExpAllDeliveries = document.getElementById('export-all-deliveries');
+  if(btnExpAllDeliveries) btnExpAllDeliveries.addEventListener('click', ()=>{ if(!window.__deliveries){ toast('No data','error'); return; } downloadFile('deliveries.csv', toCSV(window.__deliveries)); });
+  const btnExpAllDeliveriesFiltered = document.getElementById('export-all-deliveries-filtered');
+  if(btnExpAllDeliveriesFiltered) btnExpAllDeliveriesFiltered.addEventListener('click', ()=>{
         const st=overviewState.deliveries;
         const term=st.search;
         const rows=(window.__deliveries||[]).filter(d=>{
@@ -2019,7 +1981,6 @@
             'refresh-alerts': async ()=>{ await refreshDrugs(); loadStats(); },
             'refresh-settings': async ()=>{ loadSettings && loadSettings(); toast('Defaults loaded','success'); },
             'refresh-all-patients': async ()=>{ await refreshPatients(); renderAllPatients && renderAllPatients(); },
-            'refresh-all-drugs': async ()=>{ await refreshDrugs(); renderAllDrugs && renderAllDrugs(); },
             'refresh-all-deliveries': async ()=>{ await refreshDeliveries(); renderAllDeliveries && renderAllDeliveries(); }
           };
           const fn=actions[id]; if(!fn) return;
@@ -2070,7 +2031,7 @@
       document.getElementById('inv-remove-form').addEventListener('submit', async e=>{
         e.preventDefault(); const id=Number(document.getElementById('inv-remove-drug-id').value); const qty=parseInt(document.getElementById('inv-remove-quantity').value,10); const reason=document.getElementById('inv-remove-reason').value.trim(); const errEl=document.getElementById('inv-remove-error'); errEl.textContent=''; if(isNaN(qty)||qty<=0){ errEl.textContent='Quantity must be positive'; return; } if(!reason){ errEl.textContent='Reason required'; return; } const spin=document.getElementById('inv-remove-spin'); spin.classList.remove('hidden'); try { await call('/api/drug_removals',{method:'POST', body: JSON.stringify({drug_id:id, batch_no:document.getElementById('inv-remove-batch_no').value||null, reason, quantity:qty, notes:document.getElementById('inv-remove-notes').value||null })}); toast('Stock removed','success'); await loadInventoryData(); fetchInventoryTransactions(); closeRemoveModal(); } catch(err){ console.error(err); errEl.textContent= (err && err.detail) || 'Removal failed'; } finally { spin.classList.add('hidden'); } });
   // override activateTab to ensure loadInventoryData only once until manual refresh
-  const origActivateInv=activateTab; let inventoryBooted=false;
+  const origActivateInv=activateTab; // inventoryBooted defined globally at script top
   activateTab=function(tab){ origActivateInv(tab); if(tab==='inventory'){ if(!inventoryBooted){ inventoryBooted=true; loadInventoryData(); fetchInventoryTransactions(); } } };
   // Removed old delivery-form stock check (replaced with unified validation in primary submit handler above)
       // Removed duplicate activateTab override that referenced missing loadInventorySummary()
@@ -2078,13 +2039,15 @@
     // --- Improved boot sequence ---
     async function boot(){
       loadPrefs();
-      await checkAPI();
+  // First, auto-detect a working API base (tries 8000 & 5000 on localhost/127.0.0.1 and current origin)
+  try { await detectAPIBase(); } catch(e){ console.warn('API base detection failed', e); }
+  await checkAPI();
       try {
         await Promise.all([refreshPatients(), refreshDrugs()]);
         await refreshDeliveries();
       } catch(e){ console.error('Initial data load failed', e); }
       loadStats();
-      renderAllPatients(); renderAllDrugs(); renderAllDeliveries();
+  renderAllPatients(); renderAllDeliveries();
       renderAlerts();
       renderAnalytics && renderAnalytics();
       renderInventory(); // empty render before first tab open
