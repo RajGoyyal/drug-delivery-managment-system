@@ -1027,6 +1027,40 @@ if(patientForm && !patientForm.__bound){
   let refreshInterval = Number(loadPref('refreshInterval',10));
   setInterval(()=>{ if(!auto.checked){ cdEl.textContent=''; return; } countdown--; if(countdown<=0){ countdown=refreshInterval; refreshDeliveries(); loadStats(); renderAnalytics && renderAnalytics(); renderAlerts(); renderCalendar(); } cdEl.textContent='Refresh in '+countdown+'s'; },1000);
 
+    // --- Analytics Implementation (added) ---
+    function renderAnalytics(){
+      // Update analytics range display
+      const rangeEl = document.getElementById('analytics-range');
+      if(rangeEl){
+        const now = new Date();
+        const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+        rangeEl.textContent = `(${twoWeeksAgo.toLocaleDateString()} - ${now.toLocaleDateString()})`;
+      }
+      
+      // Basic canvas rendering for daily delivery volume (placeholder)
+      const canvas = document.getElementById('daily-line');
+      if(canvas){
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = '#6366f1';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height / 2);
+        ctx.lineTo(canvas.width, canvas.height / 2);
+        ctx.stroke();
+        
+        // Add simple text
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '12px sans-serif';
+        ctx.fillText('Analytics data will display here', 10, canvas.height / 2 - 10);
+      }
+    }
+    
+    // Alias for buildAnalytics to handle both function names
+    function buildAnalytics(){
+      renderAnalytics();
+    }
+
     // --- Calendar Implementation (added) ---
     const calendarState = { month: new Date(), selected: null };
     function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
@@ -1144,21 +1178,6 @@ if(patientForm && !patientForm.__bound){
   else if(name==='all-deliveries') renderAllDeliveries();
     }
     tabButtons.forEach(b=> b.addEventListener('click', ()=> activateTab(b.getAttribute('data-tab'))));
-    activateTab(loadPref('activeTab','dashboard'));
-    async function boot(){
-        loadPrefs();
-        checkAPI();
-        refreshPatients();
-        refreshDrugs();
-        refreshDeliveries();
-        loadStats();
-        renderAllPatients(); renderAllDrugs(); renderAllDeliveries();
-        renderAlerts();
-        renderAnalytics && renderAnalytics();
-        renderInventory(); fetchInventoryTransactions();
-        renderCalendar();
-        activateTab('dashboard');
-      }
       document.getElementById('seed-btn').addEventListener('click', async ()=>{
         if(!confirmAction('Insert demo data? This may duplicate existing records.')) return;
         const btn=document.getElementById('seed-btn'); btn.disabled=true; btn.textContent='Seeding...';
