@@ -1054,32 +1054,21 @@
         try { renderStatusDistribution(deliveries.reduce((a,d)=>{a[d.status]=(a[d.status]||0)+1; return a;},{})); } catch {}
       }
 
-      document.getElementById('patient-form').addEventListener('submit', async e=>{
-        e.preventDefault();
-        const fd=new FormData(patientForm);
-        const body=Object.fromEntries(fd.entries());
-        const btn=document.getElementById('patient-submit'); const sp=document.getElementById('patient-spinner'); const err=document.getElementById('patient-error');
-        err.textContent=''; btn.disabled=true; sp.classList.remove('hidden');
-        try { await call('/api/patients', {method:'POST', body: JSON.stringify(body)}); patientForm.reset(); toast('Patient added','success'); refreshPatients(); loadStats(); }
-        catch(ex){ err.textContent=ex.message; toast('Add patient failed','error'); }
-        finally { btn.disabled=false; sp.classList.add('hidden'); }
-      });
-
-// Repair patient form listener
-const patientForm=document.getElementById('patient-form');
-if(patientForm && !patientForm.__bound){
-  patientForm.__bound=true;
-  patientForm.addEventListener('submit', async e=>{
-    e.preventDefault();
-    const fd=new FormData(patientForm);
-    const body=Object.fromEntries(fd.entries());
-    const btn=document.getElementById('patient-submit'); const sp=document.getElementById('patient-spinner'); const err=document.getElementById('patient-error');
-    err.textContent=''; btn.disabled=true; sp.classList.remove('hidden');
-    try { await call('/api/patients', {method:'POST', body: JSON.stringify(body)}); patientForm.reset(); toast('Patient added','success'); refreshPatients(); loadStats(); }
-    catch(ex){ err.textContent=ex.message; toast('Add patient failed','error'); }
-    finally { btn.disabled=false; sp.classList.add('hidden'); }
-  });
-}
+      // Patient form submit (single binding guarded by __bound flag)
+      const patientForm=document.getElementById('patient-form');
+      if(patientForm && !patientForm.__bound){
+        patientForm.__bound=true;
+        patientForm.addEventListener('submit', async e=>{
+          e.preventDefault();
+          const fd=new FormData(patientForm);
+          const body=Object.fromEntries(fd.entries());
+          const btn=document.getElementById('patient-submit'); const sp=document.getElementById('patient-spinner'); const err=document.getElementById('patient-error');
+          err.textContent=''; btn.disabled=true; sp.classList.remove('hidden');
+          try { await call('/api/patients', {method:'POST', body: JSON.stringify(body)}); patientForm.reset(); toast('Patient added','success'); refreshPatients(); loadStats(); }
+          catch(ex){ err.textContent=ex.message; toast('Add patient failed','error'); }
+          finally { btn.disabled=false; sp.classList.add('hidden'); }
+        });
+      }
 
       document.getElementById('drug-form').addEventListener('submit', async e=>{
         e.preventDefault();
