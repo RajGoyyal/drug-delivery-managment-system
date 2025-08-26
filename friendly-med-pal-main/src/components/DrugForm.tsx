@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useAddDrug } from "@/api/hooks";
 import { Pill } from "lucide-react";
 
 const DrugForm = () => {
@@ -12,8 +13,9 @@ const DrugForm = () => {
     dosage: "",
     frequency: "",
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const addDrug = useAddDrug();
+  const isSubmitting = addDrug.isPending;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -22,33 +24,19 @@ const DrugForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
     try {
-      // Simulate API call to backend
-      const response = await fetch('/api/drugs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        toast({
-          title: "Drug Added Successfully",
-          description: `${formData.name} has been added to the drug catalog.`,
-        });
-        setFormData({ name: "", dosage: "", frequency: "" });
-      } else {
-        throw new Error('Failed to add drug');
-      }
-    } catch (error) {
+      await addDrug.mutateAsync({ ...formData });
       toast({
-        title: "Error Adding Drug",
-        description: "Please check your connection and try again.",
+        title: "Drug Added",
+        description: `${formData.name} saved to catalog.`,
+      });
+      setFormData({ name: "", dosage: "", frequency: "" });
+    } catch (error: any) {
+      toast({
+        title: "Add Failed",
+        description: error?.message || 'Could not add drug',
         variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -104,13 +92,12 @@ const DrugForm = () => {
             />
           </div>
           
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Adding Drug..." : "Add Drug"}
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? "Adding..." : "Add Drug"}
           </Button>
+          {addDrug.isError && (
+            <p className="text-xs text-destructive">{(addDrug.error as any)?.message || 'Submission error'}</p>
+          )}
         </form>
       </CardContent>
     </Card>

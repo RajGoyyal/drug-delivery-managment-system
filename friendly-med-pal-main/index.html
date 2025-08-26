@@ -13,143 +13,20 @@
   <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:site" content="@lovable_dev" />
-  <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-      body { font-feature-settings: "cv02","cv03","cv04","cv11"; background: linear-gradient(145deg,#0f172a,#020617 70%) fixed; position:relative; min-height:100vh; color:#f1f5f9; }
-      body::before{content:"";position:fixed;inset:0;background:radial-gradient(circle at 18% 18%, rgba(99,102,241,0.40), transparent 62%), radial-gradient(circle at 82% 75%, rgba(14,165,233,0.32), transparent 68%);pointer-events:none;z-index:-2;}
-      body::after{content:"";position:fixed;inset:0;background:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.14"/></svg>');mix-blend-mode:overlay;pointer-events:none;z-index:-1;opacity:.28;}
-      .fade-enter { opacity:0; transform: translateY(4px); }
-      .fade-enter-active { transition: all .25s; opacity:1; transform: translateY(0); }
-      .spinner { width:18px; height:18px; border:3px solid rgba(255,255,255,.35); border-top-color: #6366f1; border-radius:50%; animation: spin 0.8s linear infinite; }
-      @keyframes spin { to { transform: rotate(360deg);} }
-      .glass { position:relative; background:linear-gradient(155deg, rgba(30,41,59,.92), rgba(15,23,42,.82)); backdrop-filter: blur(22px) saturate(170%); -webkit-backdrop-filter: blur(22px) saturate(170%); border:1px solid rgba(255,255,255,0.06); box-shadow:0 8px 28px -6px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,0.04) inset; overflow:hidden; }
-      .glass::before{content:"";position:absolute;inset:0;background:linear-gradient(160deg,rgba(255,255,255,0.08),rgba(255,255,255,0) 45%);pointer-events:none;}
-      .card-hover { transition: all .45s cubic-bezier(.4,.2,.2,1); }
-      .card-hover:hover { transform: translateY(-4px); box-shadow: 0 16px 40px -10px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,0.05) inset; }
-      .heading-gradient { background: linear-gradient(92deg,#fff 0%,#93c5fd 40%,#818cf8 60%,#c7d2fe 90%); -webkit-background-clip: text; background-clip:text; color:transparent; }
-      /* Refresh buttons subtle style */
-      button[id^="refresh-"], #inv-refresh { 
-        font-weight:500; /* medium */
-        font-size:12px; 
-        text-transform:none; 
-        letter-spacing:.015em; 
-        color:#e2e8f0; 
-        text-shadow:none;
-      }
-  #main-nav { position:relative; z-index:30; }
-  .sticky-nav{position:sticky;top:0;z-index:40;padding-top:.5rem;background:linear-gradient(180deg,rgba(15,23,42,.95),rgba(15,23,42,.85));backdrop-filter:blur(14px);}      
-  #nav-indicator { position:absolute; left:0; top:0; width:4px; height:36px; border-radius:0 4px 4px 0; background:linear-gradient(180deg,#6366f1,#0ea5e9); box-shadow:0 0 0 1px rgba(255,255,255,0.08),0 4px 10px -2px rgba(0,0,0,.5); transition: all .35s cubic-bezier(.65,.05,.36,1); }
-  .pill-btn { position:relative; z-index:1; display:flex; align-items:center; justify-content:center; height:36px; line-height:1; }
-  /* Horizontal nav: keep in one line, allow scroll if overflow */
-  .nav-scroll { flex-wrap:nowrap !important; overflow-x:auto; -ms-overflow-style:none; scrollbar-width:none; }
-  .nav-scroll::-webkit-scrollbar{display:none;}
-      /* Panels (reduce see-through) */
-      [data-view].bg-slate-800{background:linear-gradient(155deg,rgba(30,41,59,0.94),rgba(15,23,42,0.88));backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);border-color:rgba(255,255,255,0.07);}
-      /* Table enhancements */
-      table thead{backdrop-filter:blur(12px);} table tbody tr:nth-child(even){background:rgba(255,255,255,0.015);} table tbody tr:hover{background:rgba(255,255,255,0.05);} th{font-weight:600; letter-spacing:.5px;}
-      /* Scrollbars */
-      .soft-scroll::-webkit-scrollbar{width:10px;} .soft-scroll::-webkit-scrollbar-track{background:transparent;} .soft-scroll::-webkit-scrollbar-thumb{background:#475569;border-radius:6px;} .soft-scroll::-webkit-scrollbar-thumb:hover{background:#64748b;}
-      /* Search dropdown layering */
-      #global-search-results{z-index:100;}
-      /* Hidden class for tab functionality when Tailwind CSS doesn't load */
-      .hidden { display: none !important; }
-    </style>
-  </head>
-  <body class="min-h-screen bg-slate-900 text-slate-100 transition-colors">
-  <div id="offline-banner" class="hidden fixed top-0 inset-x-0 z-50 bg-red-600 text-white text-center text-xs py-1 font-medium tracking-wide">OFFLINE – changes may fail to sync</div>
-  <!-- Fixed Sidebar moved outside app shell -->
-  <nav id="main-nav" class="fixed left-0 top-0 h-full w-56 flex flex-col gap-1 p-3 pt-8 bg-slate-900/70 backdrop-blur border-r border-slate-700/70 z-30 overflow-y-auto soft-scroll">
-    <span id="nav-indicator" class="hidden md:block"></span>
-    <button data-tab="dashboard" class="tab-btn text-left px-3 py-2 rounded-md bg-indigo-600 text-white shadow-inner">Dashboard</button>
-    <button data-tab="all-patients" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">All Patients <span class="text-[10px] ml-1 opacity-60" data-count="patients"></span></button>
-    <button data-tab="patients" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">Add Patient</button>
-    <button data-tab="all-drugs" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">All Drugs <span class="text-[10px] ml-1 opacity-60" data-count="drugs"></span></button>
-    <button data-tab="drugs" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">Add Drug</button>
-    <button data-tab="all-deliveries" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">All Deliveries <span class="text-[10px] ml-1 opacity-60" data-count="deliveries"></span></button>
-    <button data-tab="deliveries" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">Schedule</button>
-    <button data-tab="inventory" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">Inventory</button>
-    <button data-tab="analytics" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">Analytics</button>
-    <button data-tab="calendar" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">Calendar</button>
-    <button data-tab="alerts" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">Alerts</button>
-    <button data-tab="history" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">History</button>
-    <button data-tab="settings" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">Settings</button>
-  </nav>
-  <div class="max-w-6xl mx-auto p-6 space-y-10 pt-10 ml-56" id="app-shell">
-  <header class="flex flex-col gap-4 pb-2 border-b border-slate-700/60">
-        <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
-          <div>
-            <h1 class="heading-gradient text-4xl font-semibold tracking-tight flex items-center gap-2">Friendly Med Pal <span class="text-xs font-medium px-2 py-0.5 rounded bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 backdrop-blur-sm">v2</span></h1>
-            <p class="text-slate-400 text-sm tracking-wide">Drug delivery & adherence tracking dashboard</p>
-          </div>
-          <div class="flex items-center gap-3 text-xs text-slate-400">
-            <span id="api-indicator" class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-300 animate-pulse" id="api-dot"></span> API: checking</span>
-          </div>
-        </div>
-        <div class="relative max-w-xl">
-          <input id="global-search" placeholder="Search patients, drugs, deliveries…" class="w-full bg-slate-800/60 border border-slate-700 rounded px-3 py-2 pr-8 text-xs placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
-          <svg class="w-4 h-4 absolute right-2 top-1/2 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
-          <div id="global-search-results" class="hidden absolute z-40 mt-1 inset-x-0 bg-slate-800 border border-slate-700 rounded shadow-lg max-h-72 overflow-auto text-xs"></div>
-        </div>
-      </header>
-  <div class="flex-1 min-w-0 space-y-8" id="main-content-wrapper">
-
-  <section data-view="dashboard" class="space-y-8">
-    <div class="relative overflow-hidden rounded-2xl glass p-10 card-hover">
-          <div class="absolute inset-0 opacity-[0.15] pointer-events-none" style="background-image: radial-gradient(circle at 25% 15%, #6366f1 0, transparent 60%), radial-gradient(circle at 75% 85%, #0ea5e9 0, transparent 55%);"></div>
-          <div class="relative space-y-4">
-  <h2 class="text-3xl font-semibold tracking-tight heading-gradient flex items-center gap-3">Welcome back 👋 <button id="refresh-dashboard" class="text-xs px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button></h2>
-      <p class="text-sm text-slate-300/80 leading-relaxed max-w-prose">Monitor medication logistics, track adherence, and keep patient therapy on schedule. Use quick stats & distribution to spot issues early.</p>
-            <div class="flex flex-wrap gap-2">
-              <button id="seed-btn" class="text-xs px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-2 disabled:opacity-50" title="Insert demo data">Seed Demo Data</button>
-              <button id="export-all" class="text-xs px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600" title="Export all data to CSV">Export All CSV</button>
-            </div>
-          </div>
-        </div>
-        <div id="stats" class="grid gap-4 sm:grid-cols-3"></div>
-        <!-- Added low stock dashboard container -->
-<div id="low-stock-dash" class="glass rounded-xl p-4 hidden">
-  <h3 class="text-sm font-medium mb-2">Low Stock</h3>
-  <ul id="low-stock-list" class="text-[11px] space-y-1"></ul>
-</div>
-        <div class="grid gap-6 md:grid-cols-2">
-          <div id="status-distribution" class="glass rounded-xl p-5 card-hover hidden">
-            <div class="flex items-center justify-between mb-3"><h3 class="text-sm font-medium flex items-center gap-2">Delivery Status Distribution <span id="dist-total" class="text-[11px] font-normal text-slate-400"></span></h3><canvas id="dist-chart" width="120" height="120" class="w-16 h-16"></canvas></div>
-            <div id="dist-bars" class="space-y-3"></div>
-          </div>
-          <div id="activity-panel" class="glass rounded-xl p-5 flex flex-col card-hover">
-            <div class="flex items-center mb-3 gap-2"><h3 class="text-sm font-medium flex-1">Recent Activity</h3><input id="activity-search" placeholder="Filter" class="text-[11px] px-2 py-1 rounded bg-slate-700 border border-slate-600 w-32" /><button id="clear-activity" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600">Clear</button></div>
-            <div id="activity-empty" class="text-[11px] text-slate-500">No activity yet. Actions you take will appear here.</div>
-            <ul id="activity-log" class="space-y-2 text-[11px] overflow-auto max-h-64 soft-scroll"></ul>
-          </div>
-        </div>
-  </section>
-
-  <!-- Patients View (now kept inside main-content-wrapper so it sits to the right of the sidebar) -->
-  <section data-view="patients" class="bg-slate-800 border border-slate-700 rounded-lg shadow p-5 space-y-4 hidden">
-  <h2 class="font-semibold flex items-center gap-2">Patients <input id="patient-filter" placeholder="Filter" class="ml-3 flex-1 max-w-[160px] text-xs border border-slate-600 rounded px-2 py-1 bg-slate-700 placeholder-slate-400 text-slate-100" /><button id="refresh-patients" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button><button id="export-patients" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600 ml-auto">Export</button></h2>
-          <form id="patient-form" class="grid gap-3 text-sm">
-            <input name="name" required placeholder="Name" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
-            <input name="age" type="number" min="0" placeholder="Age" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
-            <input name="condition" placeholder="Condition" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
-            <div class="flex items-center gap-3">
-              <button class="bg-indigo-600 hover:bg-indigo-500 text-white rounded px-4 py-2 font-medium disabled:opacity-50 flex items-center gap-2" id="patient-submit"><span>Add Patient</span><span class="hidden spinner" id="patient-spinner"></span></button>
-              <p class="text-xs text-red-500" id="patient-error"></p>
-            </div>
-          </form>
-    <ul id="patient-list" class="text-xs space-y-1 max-h-48 overflow-auto divide-y divide-slate-100"></ul>
-      </section>
-
-      <!-- Drugs View -->
-  <section data-view="drugs" class="bg-slate-800 border border-slate-700 rounded-lg shadow p-5 space-y-4 hidden">
-  <h2 class="font-semibold flex items-center gap-2">Drugs <input id="drug-filter" placeholder="Filter" class="ml-3 flex-1 max-w-[160px] text-xs border border-slate-600 rounded px-2 py-1 bg-slate-700 placeholder-slate-400 text-slate-100" /><button id="refresh-drugs" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button><button id="export-drugs" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600 ml-auto">Export</button></h2>
-          <form id="drug-form" class="grid gap-3 text-sm">
-            <input name="name" required placeholder="Name" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
-            <input name="dosage" placeholder="Dosage" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
-            <input name="stock" type="number" min="0" placeholder="Stock" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
-            <input name="reorder_level" type="number" min="0" placeholder="Reorder Level" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
+  <!doctype html>
+  <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width,initial-scale=1" />
+      <title>MedDelivery</title>
+      <meta name="description" content="Drug delivery & adherence management" />
+      <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+    </head>
+    <body class="min-h-screen bg-background text-foreground antialiased">
+      <div id="root"></div>
+      <script type="module" src="/src/main.tsx"></script>
+    </body>
+  </html>
             <div class="flex items-center gap-3">
               <button class="bg-indigo-600 hover:bg-indigo-500 text-white rounded px-4 py-2 font-medium disabled:opacity-50 flex items-center gap-2" id="drug-submit"><span>Add Drug</span><span class="hidden spinner" id="drug-spinner"></span></button>
               <p class="text-xs text-red-500" id="drug-error"></p>

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useAddPatient } from "@/api/hooks";
 import { User } from "lucide-react";
 
 const PatientForm = () => {
@@ -12,8 +13,9 @@ const PatientForm = () => {
     age: "",
     contact: "",
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const addPatient = useAddPatient();
+  const isSubmitting = addPatient.isPending;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -22,37 +24,23 @@ const PatientForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
     try {
-      // Simulate API call to backend
-      const response = await fetch('/api/patients', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          age: parseInt(formData.age),
-          contact: formData.contact || null,
-        }),
+      await addPatient.mutateAsync({
+        name: formData.name,
+        age: parseInt(formData.age),
+        contact: formData.contact || undefined,
       });
-
-      if (response.ok) {
-        toast({
-          title: "Patient Added Successfully",
-          description: `${formData.name} has been added to the system.`,
-        });
-        setFormData({ name: "", age: "", contact: "" });
-      } else {
-        throw new Error('Failed to add patient');
-      }
-    } catch (error) {
       toast({
-        title: "Error Adding Patient",
-        description: "Please check your connection and try again.",
+        title: "Patient Added",
+        description: `${formData.name} has been added.`,
+      });
+      setFormData({ name: "", age: "", contact: "" });
+    } catch (error: any) {
+      toast({
+        title: "Add Failed",
+        description: error?.message || 'Could not add patient',
         variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -109,13 +97,12 @@ const PatientForm = () => {
             />
           </div>
           
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Adding Patient..." : "Add Patient"}
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? "Adding..." : "Add Patient"}
           </Button>
+          {addPatient.isError && (
+            <p className="text-xs text-destructive">{(addPatient.error as any)?.message || 'Submission error'}</p>
+          )}
         </form>
       </CardContent>
     </Card>
