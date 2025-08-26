@@ -206,20 +206,33 @@
 
       <!-- Analytics View -->
       <section data-view="analytics" class="bg-slate-800 border border-slate-700 rounded-lg shadow p-5 space-y-5 hidden">
-  <h2 class="font-semibold flex items-center gap-3">Analytics <span id="analytics-range" class="text-xs font-normal text-slate-400"></span><button id="refresh-analytics" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600 ml-auto">Refresh</button></h2>
+  <h2 class="font-semibold flex items-center gap-3">Analytics <span id="analytics-range" class="text-xs font-normal text-slate-400"></span>
+    <select id="analytics-range-select" class="text-[10px] bg-slate-700 border border-slate-600 rounded px-2 py-1">
+      <option value="7">7d</option>
+      <option value="14" selected>14d</option>
+      <option value="30">30d</option>
+    </select>
+    <button id="refresh-analytics" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600 ml-auto">Refresh</button>
+  </h2>
+        <div id="analytics-metrics" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"></div>
         <div class="grid gap-4 md:grid-cols-2">
           <div class="space-y-3">
             <h3 class="text-sm font-medium flex items-center gap-2">Daily Delivery Volume <button id="analytics-refresh" class="text-[10px] px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600">Reload</button></h3>
             <canvas id="daily-line" height="160" class="w-full bg-slate-900/40 rounded border border-slate-700"></canvas>
           </div>
           <div class="space-y-3">
-            <h3 class="text-sm font-medium">Status Mix (Last 14 days)</h3>
+            <h3 class="text-sm font-medium">Status Mix</h3>
             <div id="analytics-status" class="text-[11px] space-y-2"></div>
+            <canvas id="status-bars" height="160" class="w-full bg-slate-900/40 rounded border border-slate-700"></canvas>
           </div>
         </div>
         <div class="space-y-2">
           <h3 class="text-sm font-medium">Top Patients by Deliveries</h3>
           <ol id="top-patients" class="text-[11px] space-y-1 list-decimal list-inside"></ol>
+        </div>
+        <div class="space-y-2">
+          <h3 class="text-sm font-medium">Top Drugs by Quantity</h3>
+          <ol id="top-drugs" class="text-[11px] space-y-1 list-decimal list-inside"></ol>
         </div>
       </section>
 
@@ -1076,7 +1089,17 @@
         const body = Object.fromEntries(fd.entries());
         const btn=document.getElementById('drug-submit'); const sp=document.getElementById('drug-spinner'); const err=document.getElementById('drug-error');
         err.textContent=''; btn.disabled=true; sp.classList.remove('hidden');
-        try { await call('/api/drugs', {method:'POST', body: JSON.stringify(body)}); e.target.reset(); toast('Drug added','success'); refreshDrugs(); loadStats(); }
+        try {
+          await call('/api/drugs', {method:'POST', body: JSON.stringify(body)});
+          e.target.reset();
+          toast('Drug added','success');
+          await refreshDrugs();
+          loadStats();
+          // If inventory module already initialized, refresh its data so new stock shows immediately
+          if(typeof inventoryBooted !== 'undefined' && inventoryBooted && typeof loadInventoryData==='function'){
+            try { await loadInventoryData(); } catch{ }
+          }
+        }
         catch(ex){ err.textContent=ex.message; toast('Add drug failed','error'); }
         finally { btn.disabled=false; sp.classList.add('hidden'); }
       });
@@ -1087,7 +1110,22 @@
         const body = Object.fromEntries(fd.entries());
         const btn=document.getElementById('delivery-submit'); const sp=document.getElementById('delivery-spinner'); const err=document.getElementById('delivery-error');
         err.textContent=''; btn.disabled=true; sp.classList.remove('hidden');
-        try { await call('/api/deliveries', {method:'POST', body: JSON.stringify(body)}); e.target.reset(); toast('Delivery scheduled','success'); refreshDeliveries(); loadStats(); }
+        try {
+          // Client-side stock validation (pre-flight)
+          const qty = Number(body.quantity)||1;
+          const drugId = Number(body.drug_id);
+          const drug = (window.__drugs||[]).find(d=> d.id==drugId);
+          if(!drug){ throw new Error('Select a drug'); }
+          if((drug.stock||0) < qty){ throw new Error(`Insufficient stock (have ${drug.stock||0})`); }
+          await call('/api/deliveries', {method:'POST', body: JSON.stringify(body)});
+          e.target.reset();
+          toast('Delivery scheduled','success');
+          await Promise.all([refreshDeliveries(), refreshDrugs()]);
+          loadStats();
+          if(typeof inventoryBooted !== 'undefined' && inventoryBooted && typeof loadInventoryData==='function'){
+            try { await loadInventoryData(); } catch{}
+          }
+        }
         catch(ex){ err.textContent=ex.message; toast('Schedule failed','error'); }
         finally { btn.disabled=false; sp.classList.add('hidden'); }
       });
@@ -1113,33 +1151,91 @@
   let refreshInterval = Number(loadPref('refreshInterval',10));
   setInterval(()=>{ if(!auto.checked){ cdEl.textContent=''; return; } countdown--; if(countdown<=0){ countdown=refreshInterval; refreshDeliveries(); loadStats(); renderAnalytics && renderAnalytics(); renderAlerts(); renderCalendar(); } cdEl.textContent='Refresh in '+countdown+'s'; },1000);
 
-    // --- Analytics Implementation (added) ---
+    // --- Enhanced Analytics Implementation ---
     function renderAnalytics(){
-      // Update analytics range display
-      const rangeEl = document.getElementById('analytics-range');
-      if(rangeEl){
-        const now = new Date();
-        const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-        rangeEl.textContent = `(${twoWeeksAgo.toLocaleDateString()} - ${now.toLocaleDateString()})`;
+      const deliveries=(window.__deliveries||[]).slice();
+      const daysSel= parseInt(document.getElementById('analytics-range-select')?.value||'14',10);
+      const now = new Date();
+      const from = new Date(now.getTime() - daysSel*24*60*60*1000);
+      const rangeEl=document.getElementById('analytics-range');
+      if(rangeEl){ rangeEl.textContent=`(${from.toLocaleDateString()} - ${now.toLocaleDateString()})`; }
+      const inRange=deliveries.filter(d=> d.scheduled_for && new Date(d.scheduled_for) >= from);
+      // Daily aggregation
+      const dayMap=new Map();
+      inRange.forEach(d=>{
+        if(!d.scheduled_for){ return; }
+        const key=d.scheduled_for.slice(0,10);
+        const o=dayMap.get(key)||{pending:0,delivered:0,missed:0,cancelled:0,total:0};
+        o[d.status]=(o[d.status]||0)+1; o.total++; dayMap.set(key,o);
+      });
+      const days=[...Array(daysSel).keys()].map(i=>{ const dt=new Date(from.getTime()+ i*24*60*60*1000); return dt.toISOString().slice(0,10); });
+      // Metrics
+      const total=inRange.length;
+      const delivered=inRange.filter(d=> d.status==='delivered').length;
+      const missed=inRange.filter(d=> d.status==='missed').length;
+      const onTimeRate = delivered? Math.round(delivered/total*100):0;
+      const missRate = total? Math.round(missed/total*100):0;
+      const todayKey=new Date().toISOString().slice(0,10);
+      const todayCount=(dayMap.get(todayKey)||{}).total||0;
+      const prevDayKey=new Date(Date.now()-24*60*60*1000).toISOString().slice(0,10);
+      const prevDayCount=(dayMap.get(prevDayKey)||{}).total||0;
+      const dayChange = prevDayCount? (((todayCount-prevDayCount)/prevDayCount)*100).toFixed(1):'0.0';
+      const metrics=[
+        {label:'Total Deliveries', value: total},
+        {label:'Delivered %', value: onTimeRate+'%'},
+        {label:'Missed %', value: missRate+'%'},
+        {label:'Today vs Prev', value: (dayChange>=0?'+':'')+dayChange+'%'},
+      ];
+      const mWrap=document.getElementById('analytics-metrics');
+      if(mWrap){ mWrap.innerHTML=''; metrics.forEach(m=>{ const div=document.createElement('div'); div.className='bg-slate-900/40 border border-slate-700 rounded p-3 flex flex-col gap-1'; div.innerHTML=`<span class="text-[10px] uppercase tracking-wide text-slate-400">${m.label}</span><span class="text-xl font-semibold">${m.value}</span>`; mWrap.append(div); }); }
+      // Daily line chart
+      const line=document.getElementById('daily-line');
+      if(line){ const ctx=line.getContext('2d'); ctx.clearRect(0,0,line.width,line.height); const vals=days.map(d=> (dayMap.get(d)||{}).total||0); const max=Math.max(5, ...vals); const pad=20; ctx.strokeStyle='#334155'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(pad, line.height-pad); ctx.lineTo(line.width-pad, line.height-pad); ctx.stroke(); // axis
+        // line path
+        ctx.strokeStyle='#6366f1'; ctx.lineWidth=2; ctx.beginPath(); vals.forEach((v,i)=>{ const x=pad + (i/(vals.length-1 || 1))*(line.width-2*pad); const y=line.height-pad - (v/max)*(line.height-2*pad); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }); ctx.stroke();
+        // fill
+        const grad=ctx.createLinearGradient(0,0,0,line.height); grad.addColorStop(0,'rgba(99,102,241,0.35)'); grad.addColorStop(1,'rgba(99,102,241,0)'); ctx.fillStyle=grad; ctx.beginPath(); vals.forEach((v,i)=>{ const x=pad + (i/(vals.length-1||1))*(line.width-2*pad); const y=line.height-pad - (v/max)*(line.height-2*pad); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }); ctx.lineTo(line.width-pad,line.height-pad); ctx.lineTo(pad,line.height-pad); ctx.closePath(); ctx.fill();
+        ctx.fillStyle='#94a3b8'; ctx.font='9px sans-serif'; const step=Math.ceil(vals.length/6); for(let i=0;i<vals.length;i+=step){ const x=pad + (i/(vals.length-1||1))*(line.width-2*pad); ctx.fillText(days[i].slice(5), x-10, line.height-6); } }
+      // Status mix list & bar chart
+      const statusAgg=inRange.reduce((a,d)=>{a[d.status]=(a[d.status]||0)+1; return a;},{});
+      const sWrap=document.getElementById('analytics-status');
+      if(sWrap){
+        sWrap.innerHTML='';
+        Object.entries(statusAgg).sort((a,b)=>b[1]-a[1]).forEach(([k,v])=>{
+          const pct= total? Math.round(v/total*100):0;
+          let colorClass='bg-amber-500';
+          if(k==='delivered') colorClass='bg-emerald-500';
+          else if(k==='missed') colorClass='bg-red-500';
+          else if(k==='cancelled') colorClass='bg-slate-500';
+          const row=document.createElement('div');
+          row.className='flex items-center gap-2';
+            row.innerHTML=`<span class='w-20 capitalize'>${k}</span><div class='flex-1 h-2 bg-slate-700 rounded overflow-hidden'><div style='width:${pct}%' class='h-2 ${colorClass}'></div></div><span class='w-10 text-right'>${pct}%</span>`;
+          sWrap.append(row);
+        });
       }
-      
-      // Basic canvas rendering for daily delivery volume (placeholder)
-      const canvas = document.getElementById('daily-line');
-      if(canvas){
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = '#6366f1';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(0, canvas.height / 2);
-        ctx.lineTo(canvas.width, canvas.height / 2);
-        ctx.stroke();
-        
-        // Add simple text
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '12px sans-serif';
-        ctx.fillText('Analytics data will display here', 10, canvas.height / 2 - 10);
+      const bars=document.getElementById('status-bars');
+      if(bars){
+        const ctx=bars.getContext('2d');
+        ctx.clearRect(0,0,bars.width,bars.height);
+        const keys=['delivered','pending','missed','cancelled'];
+        const vals=keys.map(k=> statusAgg[k]||0);
+        const max=Math.max(5,...vals);
+        const bw= (bars.width-40)/keys.length;
+        keys.forEach((k,i)=>{
+          const v=vals[i];
+          const h=((v/max)||0)*(bars.height-30);
+          const x=20 + i*bw;
+          const y=bars.height-10-h;
+          let fill='#f59e0b';
+          if(k==='delivered') fill='#10b981'; else if(k==='missed') fill='#ef4444'; else if(k==='cancelled') fill='#64748b';
+          ctx.fillStyle=fill; ctx.fillRect(x+8,y,bw-16,h);
+          ctx.fillStyle='#94a3b8'; ctx.font='9px sans-serif'; ctx.fillText(String(v), x+8, y-4);
+          ctx.save(); ctx.translate(x+ (bw/2), bars.height-2); ctx.rotate(-Math.PI/3); ctx.fillText(k, -10,0); ctx.restore();
+        });
       }
+      // Top patients & drugs
+      const tPatients=document.getElementById('top-patients'); if(tPatients){ const patientCounts={}; inRange.forEach(d=>{ patientCounts[d.patient_id]=(patientCounts[d.patient_id]||0)+1; }); const top=Object.entries(patientCounts).sort((a,b)=>b[1]-a[1]).slice(0,10); tPatients.innerHTML=''; top.forEach(([pid,c])=>{ const patient=(window.__patients||[]).find(p=> p.id==pid); const li=document.createElement('li'); li.textContent=`${patient?patient.name:'Patient '+pid} – ${c}`; tPatients.append(li); }); }
+      const tDrugs=document.getElementById('top-drugs'); if(tDrugs){ const drugQty={}; inRange.forEach(d=>{ drugQty[d.drug_id]=(drugQty[d.drug_id]||0)+ (d.quantity||1); }); const topD=Object.entries(drugQty).sort((a,b)=>b[1]-a[1]).slice(0,10); tDrugs.innerHTML=''; topD.forEach(([did,c])=>{ const drug=(window.__drugs||[]).find(dr=> dr.id==did); const li=document.createElement('li'); li.textContent=`${drug?drug.name:'Drug '+did} – ${c}`; tDrugs.append(li); }); }
     }
     
     // Alias for buildAnalytics to handle both function names
@@ -1737,6 +1833,8 @@
       // EVENT HANDLERS
       document.addEventListener('input', e=>{ if(e.target.id==='inv-search'){ inventoryState.page=1; renderInventory(); } });
       document.addEventListener('change', e=>{ if(e.target.id==='inv-low-toggle'){ inventoryState.page=1; renderInventory(); } if(e.target.id==='inv-trx-filter'){ renderInventoryTransactions(); } if(e.target.id==='inv-pagesize'){ inventoryState.pageSize=parseInt(e.target.value,10)||25; inventoryState.page=1; renderInventory(); }});
+  document.addEventListener('change', e=>{ if(e.target.id==='analytics-range-select'){ renderAnalytics && renderAnalytics(); }});
+  document.addEventListener('click', e=>{ if(e.target && e.target.id==='analytics-refresh'){ renderAnalytics && renderAnalytics(); } });
       const inventoryClickHandlers={
         'inv-refresh': ()=> loadInventoryData(),
         'inv-prev': ()=>{ if(inventoryState.page>1){ inventoryState.page--; renderInventory(); } },
@@ -1781,20 +1879,7 @@
   // override activateTab to ensure loadInventoryData only once until manual refresh
   const origActivateInv=activateTab; let inventoryBooted=false;
   activateTab=function(tab){ origActivateInv(tab); if(tab==='inventory'){ if(!inventoryBooted){ inventoryBooted=true; loadInventoryData(); fetchInventoryTransactions(); } } };
-      // Enhance delivery quantity submission with client-side stock check
-      const deliveryForm=document.getElementById('delivery-form');
-      if(deliveryForm && !deliveryForm.__invHooked){
-        deliveryForm.__invHooked=true;
-        deliveryForm.addEventListener('submit', e=>{
-          const qInput=deliveryForm.querySelector('input[name=quantity]');
-          const drugSel=deliveryForm.querySelector('select[name=drug_id]');
-          if(qInput && drugSel){
-            const qty=Number(qInput.value)||1; const drugId=Number(drugSel.value);
-            const drug=(window.__drugs||[]).find(d=> d.id==drugId);
-            if(drug && (drug.stock||0) < qty){ e.preventDefault(); toast('Insufficient stock ('+ (drug.stock||0)+')','error'); qInput.focus(); return false; }
-          }
-        }, true);
-      }
+  // Removed old delivery-form stock check (replaced with unified validation in primary submit handler above)
       // Removed duplicate activateTab override that referenced missing loadInventorySummary()
 
     // --- Improved boot sequence ---
