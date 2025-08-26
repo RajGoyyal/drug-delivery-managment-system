@@ -1,25 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { usePatients, useDrugs, useAddDelivery } from "@/api/hooks";
 import { Calendar } from "lucide-react";
 
-interface Patient {
-  id: number;
-  name: string;
-  age: number;
-  contact: string;
-}
-
-interface Drug {
-  id: number;
-  name: string;
-  dosage: string;
-  frequency: string;
-}
+// Types now come from hooks (simplified via inference)
 
 const DeliveryForm = () => {
   const [formData, setFormData] = useState({
@@ -28,43 +17,14 @@ const DeliveryForm = () => {
     deliveryDate: "",
     status: "pending",
   });
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [drugs, setDrugs] = useState<Drug[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-
-  useEffect(() => {
-    // Fetch patients and drugs for the select dropdowns
-    const fetchData = async () => {
-      try {
-        const [patientsRes, drugsRes] = await Promise.all([
-          fetch('/api/patients'),
-          fetch('/api/drugs'),
-        ]);
-
-        if (patientsRes.ok && drugsRes.ok) {
-          setPatients(await patientsRes.json());
-          setDrugs(await drugsRes.json());
-        }
-      } catch (error) {
-        console.log("Mock data loaded for demo");
-        // Mock data for demo
-        setPatients([
-          { id: 1, name: "Alice Johnson", age: 42, contact: "alice@example.com" },
-          { id: 2, name: "Bob Smith", age: 65, contact: "bob@example.com" },
-        ]);
-        setDrugs([
-          { id: 1, name: "Amoxicillin", dosage: "500 mg", frequency: "2x/day" },
-          { id: 2, name: "Ibuprofen", dosage: "200 mg", frequency: "3x/day" },
-        ]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
+  const patientsQ = usePatients();
+  const drugsQ = useDrugs();
+  const addDelivery = useAddDelivery();
+  const patients = patientsQ.data || [];
+  const drugs = drugsQ.data || [];
+  const isSubmitting = addDelivery.isPending;
+  const isLoading = patientsQ.isLoading || drugsQ.isLoading;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -77,48 +37,31 @@ const DeliveryForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
     try {
-      const response = await fetch('/api/deliveries', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          patient_id: parseInt(formData.patientId),
-          drug_id: parseInt(formData.drugId),
-          delivery_date: formData.deliveryDate,
-          status: formData.status,
-        }),
+      await addDelivery.mutateAsync({
+        patient_id: parseInt(formData.patientId),
+        drug_id: parseInt(formData.drugId),
+        scheduled_for: formData.deliveryDate,
+        status: formData.status,
       });
-
-      if (response.ok) {
-        const patient = patients.find(p => p.id === parseInt(formData.patientId));
-        const drug = drugs.find(d => d.id === parseInt(formData.drugId));
-        
-        toast({
-          title: "Delivery Recorded",
-          description: `Delivery scheduled for ${patient?.name} - ${drug?.name}`,
-        });
-        setFormData({ patientId: "", drugId: "", deliveryDate: "", status: "pending" });
-      } else {
-        throw new Error('Failed to record delivery');
-      }
-    } catch (error) {
-      toast({
-        title: "Error Recording Delivery",
-        description: "Please check your connection and try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
+      const patient = patients.find(p => p.id === parseInt(formData.patientId));
+      const drug = drugs.find(d => d.id === parseInt(formData.drugId));
+      toast({ title: 'Delivery Recorded', description: `${patient?.name} - ${drug?.name}` });
+      setFormData({ patientId: "", drugId: "", deliveryDate: "", status: "pending" });
+    } catch (e:any){
+      toast({ title:'Record Failed', description: e?.message || 'Could not record delivery', variant:'destructive' });
     }
   };
 
   if (isLoading) {
     return (
       <Card className="max-w-md mx-auto">
-        <CardContent className="p-6">
-          <div className="text-center text-muted-foreground">Loading patients and drugs...</div>
+        <CardContent className="p-6 space-y-4">
+          <div className="h-4 w-2/3 bg-muted animate-pulse rounded" />
+          <div className="h-4 w-1/2 bg-muted animate-pulse rounded" />
+          <div className="h-10 w-full bg-muted animate-pulse rounded" />
+          <div className="h-10 w-full bg-muted animate-pulse rounded" />
+          <div className="h-10 w-full bg-muted animate-pulse rounded" />
         </CardContent>
       </Card>
     );
@@ -170,7 +113,7 @@ const DeliveryForm = () => {
               <SelectContent>
                 {drugs.map((drug) => (
                   <SelectItem key={drug.id} value={drug.id.toString()}>
-                    {drug.name} - {drug.dosage} ({drug.frequency})
+                    {drug.name}{drug.dosage ? ` - ${drug.dosage}`: ''}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -207,13 +150,12 @@ const DeliveryForm = () => {
             </Select>
           </div>
           
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Recording Delivery..." : "Record Delivery"}
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? "Recording..." : "Record Delivery"}
           </Button>
+          {addDelivery.isError && (
+            <p className="text-xs text-destructive">{(addDelivery.error as any)?.message || 'Submission error'}</p>
+          )}
         </form>
       </CardContent>
     </Card>

@@ -1,141 +1,30 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Calendar, Pill, User } from "lucide-react";
+import { usePatients, useDeliveries, useUpdateDeliveryStatus, useDrugs } from "@/api/hooks";
+import { FileText, Calendar, Pill } from "lucide-react";
 
-interface Patient {
-  id: number;
-  name: string;
-  age: number;
-  contact: string;
-}
-
-interface DeliveryRecord {
-  id: number;
-  patient_id: number;
-  patient_name: string;
-  drug_id: number;
-  drug_name: string;
-  dosage: string;
-  frequency: string;
-  delivery_date: string;
-  status: string;
-}
+// Types inferred from hooks; legacy interfaces removed
 
 const DeliveryHistory = () => {
   const [selectedPatient, setSelectedPatient] = useState("");
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [deliveries, setDeliveries] = useState<DeliveryRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const patientsQ = usePatients();
+  const drugsQ = useDrugs();
+  const deliveriesQ = useDeliveries();
+  const updateStatus = useUpdateDeliveryStatus();
+  const patients = patientsQ.data || [];
+  const allDeliveries = deliveriesQ.data || [];
+  const deliveries = selectedPatient ? allDeliveries.filter(d=> String(d.patient_id)===selectedPatient) : allDeliveries;
+  const drugs = drugsQ.data || [];
+  const isLoading = patientsQ.isLoading || deliveriesQ.isLoading;
 
-  useEffect(() => {
-    // Fetch patients for the dropdown
-    const fetchPatients = async () => {
-      try {
-        const response = await fetch('/api/patients');
-        if (response.ok) {
-          setPatients(await response.json());
-        }
-      } catch (error) {
-        // Mock data for demo
-        setPatients([
-          { id: 1, name: "Alice Johnson", age: 42, contact: "alice@example.com" },
-          { id: 2, name: "Bob Smith", age: 65, contact: "bob@example.com" },
-        ]);
-      }
-    };
-
-    fetchPatients();
-  }, []);
-
-  const fetchDeliveryHistory = async (patientId: string) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`/api/deliveries/patient/${patientId}`);
-      if (response.ok) {
-        setDeliveries(await response.json());
-      } else {
-        throw new Error('Failed to fetch delivery history');
-      }
-    } catch (error) {
-      // Mock data for demo
-      const mockDeliveries: DeliveryRecord[] = [
-        {
-          id: 1,
-          patient_id: parseInt(patientId),
-          patient_name: "Alice Johnson",
-          drug_id: 1,
-          drug_name: "Amoxicillin",
-          dosage: "500 mg",
-          frequency: "2x/day",
-          delivery_date: "2024-12-20",
-          status: "delivered"
-        },
-        {
-          id: 2,
-          patient_id: parseInt(patientId),
-          patient_name: "Alice Johnson",
-          drug_id: 2,
-          drug_name: "Ibuprofen",
-          dosage: "200 mg",
-          frequency: "3x/day",
-          delivery_date: "2024-12-22",
-          status: "pending"
-        }
-      ];
-      setDeliveries(mockDeliveries);
-      
-      toast({
-        title: "Demo Mode",
-        description: "Showing mock delivery data for demonstration.",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const updateDeliveryStatus = async (deliveryId: number, newStatus: string) => {
-    try {
-      const response = await fetch(`/api/deliveries/${deliveryId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (response.ok) {
-        setDeliveries(prev => 
-          prev.map(delivery => 
-            delivery.id === deliveryId 
-              ? { ...delivery, status: newStatus }
-              : delivery
-          )
-        );
-        toast({
-          title: "Status Updated",
-          description: `Delivery status changed to ${newStatus}`,
-        });
-      } else {
-        throw new Error('Failed to update status');
-      }
-    } catch (error) {
-      // For demo purposes, update locally
-      setDeliveries(prev => 
-        prev.map(delivery => 
-          delivery.id === deliveryId 
-            ? { ...delivery, status: newStatus }
-            : delivery
-        )
-      );
-      toast({
-        title: "Status Updated (Demo)",
-        description: `Delivery status changed to ${newStatus}`,
-      });
-    }
+  const updateDeliveryStatus = async (id:number, status:string)=>{
+    try { await updateStatus.mutateAsync({id,status}); toast({ title:'Status Updated', description: status }); }
+    catch(e:any){ toast({ title:'Update Failed', description: e?.message || 'Could not update', variant:'destructive' }); }
   };
 
   const getStatusColor = (status: string) => {
@@ -169,10 +58,7 @@ const DeliveryHistory = () => {
           <Label htmlFor="patient-select">Select Patient</Label>
           <Select
             value={selectedPatient}
-            onValueChange={(value) => {
-              setSelectedPatient(value);
-              fetchDeliveryHistory(value);
-            }}
+            onValueChange={(value) => setSelectedPatient(value)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Choose a patient to view history" />
@@ -206,26 +92,30 @@ const DeliveryHistory = () => {
             </h3>
             
             <div className="space-y-3">
-              {deliveries.map((delivery) => (
+              {deliveries.map((delivery) => {
+                const drug = drugs.find(d=> d.id === delivery.drug_id);
+                return (
                 <Card key={delivery.id} className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="space-y-2">
                       <div className="flex items-center space-x-4">
                         <div className="flex items-center space-x-2">
                           <Pill className="w-4 h-4 text-muted-foreground" />
-                          <span className="font-medium">{delivery.drug_name}</span>
+                          <span className="font-medium">{drug?.name || `Drug #${delivery.drug_id}`}</span>
                         </div>
                         <div className="flex items-center space-x-2">
                           <Calendar className="w-4 h-4 text-muted-foreground" />
                           <span className="text-sm text-muted-foreground">
-                            {new Date(delivery.delivery_date).toLocaleDateString()}
+                            {new Date(delivery.scheduled_for).toLocaleDateString()}
                           </span>
                         </div>
                       </div>
                       
-                      <div className="text-sm text-muted-foreground">
-                        Dosage: {delivery.dosage} • Frequency: {delivery.frequency}
-                      </div>
+                      {delivery.quantity != null && (
+                        <div className="text-sm text-muted-foreground">
+                          Quantity: {delivery.quantity}
+                        </div>
+                      )}
                     </div>
                     
                     <div className="flex items-center space-x-3">
@@ -250,7 +140,7 @@ const DeliveryHistory = () => {
                     </div>
                   </div>
                 </Card>
-              ))}
+              );})}
             </div>
           </div>
         )}
