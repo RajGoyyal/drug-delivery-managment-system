@@ -41,7 +41,7 @@
       }
   #main-nav { position:relative; z-index:30; }
   .sticky-nav{position:sticky;top:0;z-index:40;padding-top:.5rem;background:linear-gradient(180deg,rgba(15,23,42,.95),rgba(15,23,42,.85));backdrop-filter:blur(14px);}      
-  #nav-indicator { position:absolute; left:0; top:1px; height:36px; border-radius:999px; background:rgba(100,116,139,0.35); backdrop-filter:blur(14px); border:1px solid rgba(255,255,255,0.08); transition: all .5s cubic-bezier(.65,.05,.36,1); box-shadow:0 4px 14px -4px rgba(0,0,0,.55); }
+  #nav-indicator { position:absolute; left:0; top:0; width:4px; height:36px; border-radius:0 4px 4px 0; background:linear-gradient(180deg,#6366f1,#0ea5e9); box-shadow:0 0 0 1px rgba(255,255,255,0.08),0 4px 10px -2px rgba(0,0,0,.5); transition: all .35s cubic-bezier(.65,.05,.36,1); }
   .pill-btn { position:relative; z-index:1; display:flex; align-items:center; justify-content:center; height:36px; line-height:1; }
   /* Horizontal nav: keep in one line, allow scroll if overflow */
   .nav-scroll { flex-wrap:nowrap !important; overflow-x:auto; -ms-overflow-style:none; scrollbar-width:none; }
@@ -75,22 +75,24 @@
           <div id="global-search-results" class="hidden absolute z-40 mt-1 inset-x-0 bg-slate-800 border border-slate-700 rounded shadow-lg max-h-72 overflow-auto text-xs"></div>
         </div>
       </header>
-      <nav id="main-nav" class="sticky-nav nav-scroll flex gap-1 text-sm mt-2 p-1 rounded-full bg-slate-800/60 backdrop-blur border border-slate-700/70 relative">
-        <span id="nav-indicator"></span>
-        <button data-tab="dashboard" class="tab-btn pill-btn px-4 rounded-full bg-indigo-600 text-white shadow-inner whitespace-nowrap">Dashboard</button>
-        <button data-tab="all-patients" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">All Patients <span class="text-[10px] ml-1 opacity-60" data-count="patients"></span></button>
-        <button data-tab="patients" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Add Patient</button>
-        <button data-tab="all-drugs" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">All Drugs <span class="text-[10px] ml-1 opacity-60" data-count="drugs"></span></button>
-        <button data-tab="drugs" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Add Drug</button>
-        <button data-tab="all-deliveries" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">All Deliveries <span class="text-[10px] ml-1 opacity-60" data-count="deliveries"></span></button>
-        <button data-tab="deliveries" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Schedule</button>
-  <button data-tab="inventory" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Inventory</button>
-        <button data-tab="analytics" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Analytics</button>
-        <button data-tab="calendar" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Calendar</button>
-        <button data-tab="alerts" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Alerts</button>
-        <button data-tab="history" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">History</button>
-        <button data-tab="settings" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Settings</button>
-      </nav>
+      <div class="flex gap-6 mt-4">
+        <nav id="main-nav" class="flex flex-col gap-1 w-48 shrink-0 p-2 rounded-xl bg-slate-800/60 backdrop-blur border border-slate-700/70 relative overflow-hidden">
+          <span id="nav-indicator" class="hidden md:block"></span>
+          <button data-tab="dashboard" class="tab-btn text-left px-3 py-2 rounded-md bg-indigo-600 text-white shadow-inner">Dashboard</button>
+          <button data-tab="all-patients" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">All Patients <span class="text-[10px] ml-1 opacity-60" data-count="patients"></span></button>
+          <button data-tab="patients" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">Add Patient</button>
+          <button data-tab="all-drugs" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">All Drugs <span class="text-[10px] ml-1 opacity-60" data-count="drugs"></span></button>
+          <button data-tab="drugs" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">Add Drug</button>
+          <button data-tab="all-deliveries" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">All Deliveries <span class="text-[10px] ml-1 opacity-60" data-count="deliveries"></span></button>
+          <button data-tab="deliveries" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">Schedule</button>
+          <button data-tab="inventory" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">Inventory</button>
+          <button data-tab="analytics" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">Analytics</button>
+          <button data-tab="calendar" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">Calendar</button>
+          <button data-tab="alerts" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">Alerts</button>
+          <button data-tab="history" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">History</button>
+          <button data-tab="settings" class="tab-btn text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700/60">Settings</button>
+        </nav>
+        <div class="flex-1 min-w-0 space-y-8" id="main-content-wrapper">
 
   <section data-view="dashboard" class="space-y-8">
     <div class="relative overflow-hidden rounded-2xl glass p-10 card-hover">
@@ -122,6 +124,8 @@
           </div>
         </div>
       </section>
+        </div><!-- end main-content-wrapper -->
+      </div><!-- end flex layout -->
 
       <!-- Patients View -->
   <section data-view="patients" class="bg-slate-800 border border-slate-700 rounded-lg shadow p-5 space-y-4 hidden">
@@ -1232,8 +1236,8 @@ if(patientForm && !patientForm.__bound){
         if(ind && activeBtn){
           const rect=activeBtn.getBoundingClientRect();
           const parentRect=activeBtn.parentElement.getBoundingClientRect();
-          ind.style.width=rect.width+'px';
-          ind.style.transform=`translateX(${rect.left-parentRect.left}px)`;
+          ind.style.height=rect.height+'px';
+          ind.style.transform=`translateY(${rect.top-parentRect.top}px)`;
         }
       } catch{}
   if(name==='all-patients') renderAllPatients();
