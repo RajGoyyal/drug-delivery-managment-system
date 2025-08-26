@@ -30,6 +30,15 @@
       .card-hover { transition: all .45s cubic-bezier(.4,.2,.2,1); }
       .card-hover:hover { transform: translateY(-4px); box-shadow: 0 16px 40px -10px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,0.05) inset; }
       .heading-gradient { background: linear-gradient(92deg,#fff 0%,#93c5fd 40%,#818cf8 60%,#c7d2fe 90%); -webkit-background-clip: text; background-clip:text; color:transparent; }
+      /* Refresh buttons subtle style */
+      button[id^="refresh-"], #inv-refresh { 
+        font-weight:500; /* medium */
+        font-size:12px; 
+        text-transform:none; 
+        letter-spacing:.015em; 
+        color:#e2e8f0; 
+        text-shadow:none;
+      }
   #main-nav { position:relative; z-index:30; }
   .sticky-nav{position:sticky;top:0;z-index:40;padding-top:.5rem;background:linear-gradient(180deg,rgba(15,23,42,.95),rgba(15,23,42,.85));backdrop-filter:blur(14px);}      
   #nav-indicator { position:absolute; left:0; top:1px; height:36px; border-radius:999px; background:rgba(100,116,139,0.35); backdrop-filter:blur(14px); border:1px solid rgba(255,255,255,0.08); transition: all .5s cubic-bezier(.65,.05,.36,1); box-shadow:0 4px 14px -4px rgba(0,0,0,.55); }
@@ -593,7 +602,7 @@
       document.getElementById('settings-form')?.addEventListener('submit', e => {
         e.preventDefault();
         try {
-          const refreshInterval = document.getElementById('set-refresh').value;
+          let refreshInterval = document.getElementById('set-refresh').value;
           const activityDisplayLimit = document.getElementById('set-activity-display').value;
           const activityStoreLimit = document.getElementById('set-activity-store').value;
           
@@ -604,7 +613,11 @@
           // Update runtime variables
           ACTIVITY_DISPLAY_LIMIT = Number(activityDisplayLimit) || 50;
           ACTIVITY_STORE_LIMIT = Number(activityStoreLimit) || 200;
-          refreshInterval = Number(refreshInterval) || 10;
+          refreshInterval = Number(refreshInterval) || 10; // normalize
+          // Update the in-memory interval used by auto-refresh loop if defined
+          if(typeof window !== 'undefined' && typeof window.refreshInterval !== 'undefined') {
+            window.refreshInterval = refreshInterval;
+          }
           
           document.getElementById('settings-status').textContent = 'Settings saved!';
           toast('Settings saved successfully', 'success');
@@ -626,7 +639,12 @@
         const drugs = window.__drugs || [];
         const lowStockDrugs = drugs.filter(d => (d.stock || 0) <= (d.reorder_level || 0));
         
-        alertCount.textContent = lowStockDrugs.length ? `${lowStockDrugs.length} alert${lowStockDrugs.length !== 1 ? 's' : ''}` : '';
+        if(lowStockDrugs.length){
+          const plural = lowStockDrugs.length === 1 ? '' : 's';
+          alertCount.textContent = `${lowStockDrugs.length} alert${plural}`;
+        } else {
+          alertCount.textContent = '';
+        }
         
         if(lowStockDrugs.length === 0) {
           alertList.innerHTML = '<div class="text-slate-400 text-center py-4">No alerts</div>';
@@ -649,16 +667,26 @@
         const controller = new AbortController();
         const t=setTimeout(()=> controller.abort(), 8000);
         let res;
-        try { res = await fetch(url, {headers:{'Content-Type':'application/json'}, signal:controller.signal, ...opts}); }
-        catch(e){ updateAPIIndicator('network error','error'); throw new Error('Network error: '+e.message); }
-        finally { clearTimeout(t); }
-         if(!res.ok){
-           let msg;
-           try { msg = (await res.json()).detail || await res.text(); } catch { msg = res.statusText; }
-           throw new Error(res.status + ' ' + msg);
-         }
+        try {
+          res = await fetch(url, {headers:{'Content-Type':'application/json'}, signal:controller.signal, ...opts});
+        } catch(e){
+          updateAPIIndicator('network error','error');
+          throw new Error('Network error while calling '+path+': '+e.message);
+        } finally { clearTimeout(t); }
+        if(!res.ok){
+          let msg;
+          try { msg = (await res.json()).detail || await res.text(); } catch { msg = res.statusText; }
+          throw new Error('HTTP '+res.status+' '+msg+' ['+path+']');
+        }
         updateAPIIndicator('', 'ok');
-         return res.json();
+        if(res.status===204) return null;
+        const ct = res.headers.get('content-type')||'';
+        if(!ct.includes('application/json')){
+          // Try text fallback
+            try { return await res.text(); } catch { return null; }
+        }
+        try { return await res.json(); }
+        catch(e){ throw new Error('Invalid JSON from '+path+': '+e.message); }
        }
 
       function stat(label, value){
@@ -768,17 +796,29 @@
         });
       }
       function logActivity(action, meta=''){
-        const list=document.getElementById('activity-log'); const empty=document.getElementById('activity-empty'); if(!list){ return; }
-        if(empty){ empty.classList.add('hidden'); }
-        const time=new Date().toLocaleTimeString();
-        const li=document.createElement('li'); li.className='flex items-start gap-2';
-        li.innerHTML=`<span class='mt-0.5 w-1.5 h-1.5 rounded-full bg-indigo-500'></span><div class='flex-1'><div class='font-medium'>${action}</div><div class='text-[10px] text-slate-500'>${time}${meta? ' • '+meta:''}</div></div>`;
-        list.prepend(li);
+  const list=document.getElementById('activity-log'); const empty=document.getElementById('activity-empty'); if(!list){ return; }
+  if(empty){ empty.classList.add('hidden'); }
+  const time=new Date().toLocaleTimeString();
+  const li=document.createElement('li'); li.className='flex items-start gap-2';
+  li.innerHTML=`<span class='mt-0.5 w-1.5 h-1.5 rounded-full bg-indigo-500'></span><div class='flex-1'><div class='font-medium'>${action}</div><div class='text-[10px] text-slate-500'>${time}${meta? ' • '+meta:''}</div></div>`;
+  list.prepend(li);
         activityStore.unshift({action,time,meta});
         while(activityStore.length>ACTIVITY_STORE_LIMIT){ activityStore.pop(); }
         persistActivity();
         while(list.children.length>ACTIVITY_DISPLAY_LIMIT){ list.lastChild.remove(); }
       }
+  function renderActivity(){
+    const list=document.getElementById('activity-log'); const empty=document.getElementById('activity-empty');
+    if(!list||!empty) return;
+    list.innerHTML='';
+    if(!activityStore.length){ empty.classList.remove('hidden'); return; }
+    empty.classList.add('hidden');
+    activityStore.slice(0, ACTIVITY_DISPLAY_LIMIT).forEach(a=>{
+      const li=document.createElement('li'); li.className='py-1 flex items-center justify-between gap-2';
+      li.innerHTML=`<span class='mt-0.5 w-1.5 h-1.5 rounded-full bg-indigo-500'></span><div class='flex-1'><div class='font-medium'>${a.action}</div><div class='text-[10px] text-slate-500'>${a.time}${a.meta? ' • '+a.meta:''}</div></div>`;
+      list.append(li);
+    });
+  }
   document.addEventListener('click', e=>{ if(e.target && e.target.id==='clear-activity'){ const list=document.getElementById('activity-log'); if(list){ list.innerHTML=''; } activityStore=[]; persistActivity(); const empty=document.getElementById('activity-empty'); if(empty){ empty.classList.remove('hidden'); } }});
 
       function escapeHTML(str){ return str.replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"})); }
@@ -1081,14 +1121,31 @@ if(patientForm && !patientForm.__bound){
       // deliveries grouped by date
       const deliveries=(window.__deliveries||[]).slice();
       const byDate=new Map();
-      deliveries.forEach(d=>{ if(!d.scheduled_for) return; const key=d.scheduled_for.slice(0,10); if(!byDate.has(key)) byDate.set(key, []); byDate.get(key).push(d); });
+      deliveries.forEach(d=>{
+        if(!d.scheduled_for) return;
+        const key=d.scheduled_for.slice(0,10);
+        if(!byDate.has(key)) byDate.set(key, []);
+        byDate.get(key).push(d);
+      });
       grid.innerHTML=days.map(d=>{
         if(!d) return `<div class='h-20 rounded bg-slate-900/40 border border-slate-800'></div>`;
         const key=fmtDate(d);
         const list=byDate.get(key)||[];
         let statusCount={pending:0, delivered:0, missed:0, cancelled:0};
         list.forEach(x=>{ statusCount[x.status]=(statusCount[x.status]||0)+1; });
-        const badge=list.length? `<div class='mt-1 flex flex-wrap gap-0.5 text-[9px]'>${Object.entries(statusCount).filter(([k,v])=>v).map(([k,v])=>`<span class='px-1 rounded bg-slate-700 ${k==='pending'?'text-amber-300':k==='delivered'?'text-emerald-300':k==='missed'?'text-rose-300':'text-slate-400'}'>${k[0]}:${v}</span>`).join('')}</div>` : '';
+        let badge='';
+        if(list.length){
+          const parts = Object.entries(statusCount)
+            .filter(([k,v])=>v)
+            .map(([k,v])=>{
+              let color='text-slate-400';
+              if(k==='pending') color='text-amber-300';
+              else if(k==='delivered') color='text-emerald-300';
+              else if(k==='missed') color='text-rose-300';
+              return `<span class='px-1 rounded bg-slate-700 ${color}'>${k[0]}:${v}</span>`;
+            });
+          badge = `<div class='mt-1 flex flex-wrap gap-0.5 text-[9px]'>${parts.join('')}</div>`;
+        }
         const todayKey=fmtDate(new Date());
         const isToday= key===todayKey;
         const sel= calendarState.selected && fmtDate(calendarState.selected)===key;
@@ -1662,7 +1719,7 @@ if(patientForm && !patientForm.__bound){
           const id=e.target && e.target.id;
           if(!id || !id.startsWith('refresh-')) return;
           const actions={
-            'refresh-dashboard': async ()=>{ await Promise.all([refreshPatients(), refreshDrugs(), refreshDeliveries()]); loadStats(); renderActivity && renderActivity(); },
+            'refresh-dashboard': async ()=>{ await Promise.all([refreshPatients(), refreshDrugs(), refreshDeliveries()]); loadStats(); if(typeof renderActivity==='function') renderActivity(); },
             'refresh-patients': async ()=>{ await refreshPatients(); renderPatients && renderPatients(); },
             'refresh-drugs': async ()=>{ await refreshDrugs(); renderDrugs && renderDrugs(); },
             'refresh-deliveries': async ()=>{ await refreshDeliveries(); renderDeliveries && renderDeliveries(); renderAllDeliveries && renderAllDeliveries(); loadStats(); },
