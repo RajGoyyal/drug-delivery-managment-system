@@ -125,11 +125,9 @@
             <ul id="activity-log" class="space-y-2 text-[11px] overflow-auto max-h-64 soft-scroll"></ul>
           </div>
         </div>
-      </section>
-        </div><!-- end main-content-wrapper -->
-      </div><!-- end flex layout -->
+  </section>
 
-      <!-- Patients View -->
+  <!-- Patients View (now kept inside main-content-wrapper so it sits to the right of the sidebar) -->
   <section data-view="patients" class="bg-slate-800 border border-slate-700 rounded-lg shadow p-5 space-y-4 hidden">
   <h2 class="font-semibold flex items-center gap-2">Patients <input id="patient-filter" placeholder="Filter" class="ml-3 flex-1 max-w-[160px] text-xs border border-slate-600 rounded px-2 py-1 bg-slate-700 placeholder-slate-400 text-slate-100" /><button id="refresh-patients" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button><button id="export-patients" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600 ml-auto">Export</button></h2>
           <form id="patient-form" class="grid gap-3 text-sm">
@@ -508,7 +506,8 @@
       </section>
 
       <footer class="text-center text-xs text-slate-400 py-8">&copy; 2025 Friendly Med Pal 2.0</footer>
-    </div>
+    </div><!-- end main-content-wrapper -->
+  </div><!-- end app-shell -->
 
     <!-- Patient Detail Modal -->
     <div id="patient-modal" class="hidden fixed inset-0 z-50 items-start justify-center pt-20 px-4 bg-slate-900/70 backdrop-blur-sm">
