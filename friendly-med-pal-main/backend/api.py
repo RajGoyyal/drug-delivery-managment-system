@@ -9,11 +9,12 @@ the backend seamlessly (same origin). CORS is enabled permissively for dev.
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException, Path as FPath
+from fastapi import FastAPI, HTTPException, Path as FPath, Query
+import traceback
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, validator
@@ -34,6 +35,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/api/debug/routes", include_in_schema=False)
+def debug_routes():  # simple diagnostic list
+    return [
+        {
+            "path": r.path,
+            "methods": sorted(m for m in r.methods if m not in {"HEAD", "OPTIONS"}),
+            "name": r.name,
+        }
+        for r in app.router.routes
+    ]
 
 
 # ----------------------------- Pydantic Models --------------------------------
@@ -87,6 +100,63 @@ class Stats(BaseModel):
     completedToday: int
     missedDeliveries: int
     upcomingDeliveries: int
+
+
+class BatchCreate(BaseModel):
+    drug_id: int
+    batch_no: Optional[str] = None
+    isbn: Optional[str] = None
+    producer: Optional[str] = None
+    transporter: Optional[str] = None
+    mfg_date: Optional[str] = None
+    exp_date: Optional[str] = None
+    quantity: int
+    notes: Optional[str] = None
+
+    @validator("quantity")
+    def positive_qty(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("quantity must be positive")
+        return v
+
+    @validator("exp_date")
+    def validate_dates(cls, exp: Optional[str], values: dict[str, Optional[str]]):  # noqa: D401
+        mfg: Optional[str] = values.get("mfg_date")  # type: ignore[arg-type]
+        if exp and mfg and exp < mfg:
+            raise ValueError("exp_date must be after mfg_date")
+        return exp
+
+
+class RemovalCreate(BaseModel):
+    drug_id: int
+    batch_no: Optional[str] = None
+    reason: str
+    quantity: int
+    notes: Optional[str] = None
+
+    @validator("reason")
+    def reason_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("reason required")
+        return v
+
+    @validator("quantity")
+    def positive_qty(cls, v: int) -> int:  # noqa: D401
+        if v <= 0:
+            raise ValueError("quantity must be positive")
+        return v
+
+
+class AdjustRequest(BaseModel):
+    drug_id: int
+    delta: int
+    reason: Optional[str] = "manual"
+
+    @validator("delta")
+    def non_zero(cls, v: int) -> int:  # noqa: D401
+        if v == 0:
+            raise ValueError("delta cannot be zero")
+        return v
 
 
 # ----------------------------- Helper Logic -----------------------------------
@@ -186,10 +256,129 @@ def get_stats():
     return compute_stats()
 
 
+# ----------------------------- Inventory Endpoints ----------------------------
+@app.get("/api/inventory/summary")
+def inventory_summary():
+    return service.inventory_summary()
+
+
+@app.get("/api/inventory/transactions")
+def inventory_transactions(limit: int = Query(300, ge=1, le=1000)):
+    return service.list_transactions(limit=limit)
+
+
+@app.post("/api/inventory/adjust", status_code=201)
+def inventory_adjust(payload: AdjustRequest):
+    tid = service.adjust_inventory(payload.drug_id, payload.delta, payload.reason or "manual")
+    return {"id": tid}
+
+
+@app.post("/api/drug_batches", status_code=201)
+def create_batch(payload: BatchCreate):
+    try:
+        print(f"[API] /api/drug_batches payload: {payload.dict()}")
+        bid = service.add_drug_batch(
+            payload.drug_id,
+            quantity=payload.quantity,
+            batch_no=payload.batch_no,
+            isbn=payload.isbn,
+            producer=payload.producer,
+            transporter=payload.transporter,
+            mfg_date=payload.mfg_date,
+            exp_date=payload.exp_date,
+            notes=payload.notes,
+        )
+        return {"id": bid}
+    except Exception as e:  # convert to 400/500 depending on type
+        tb = traceback.format_exc()
+        print(f"[API][Error] create_batch failed: {e}\n{tb}")
+        # Provide structured error for frontend debugging
+        raise HTTPException(status_code=400, detail=f"batch_error: {e}")
+
+
+@app.get("/api/drug_batches")
+def list_batches(drug_id: Optional[int] = None, limit: int = Query(200, ge=1, le=1000)):
+    return service.list_batches(drug_id=drug_id, limit=limit)
+
+
+@app.post("/api/drug_removals", status_code=201)
+def create_removal(payload: RemovalCreate):
+    rid = service.remove_stock(
+        payload.drug_id, payload.quantity, payload.reason, batch_no=payload.batch_no, notes=payload.notes
+    )
+    return {"id": rid}
+
+
+@app.get("/api/drug_removals")
+def list_removals(drug_id: Optional[int] = None, limit: int = Query(200, ge=1, le=1000)):
+    return service.list_removals(drug_id=drug_id, limit=limit)
+
+
 # ----------------------------- Health -----------------------------------------
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "time": datetime.utcnow().isoformat()}
+    return {"status": "ok", "time": datetime.now(timezone.utc).isoformat()}
+
+
+# ----------------------------- Additional CRUD for Frontend ------------------
+class DrugUpdate(BaseModel):
+    name: Optional[str] = None
+    dosage: Optional[str] = None
+    frequency: Optional[str] = None
+    stock: Optional[int] = None
+    reorder_level: Optional[int] = None
+
+
+@app.patch("/api/drugs/{drug_id}")
+def update_drug(drug_id: int, payload: DrugUpdate):
+    # Build dynamic SET clause
+    fields = []
+    params = []
+    for col in ["name", "dosage", "frequency", "stock", "reorder_level"]:
+        val = getattr(payload, col)
+        if val is not None:
+            fields.append(f"{col}=?")
+            params.append(val)
+    if not fields:
+        return {"updated": 0}
+    params.append(drug_id)
+    cur = service.conn.execute(
+        f"UPDATE drugs SET {', '.join(fields)} WHERE id=?", params
+    )
+    service.conn.commit()
+    return {"updated": cur.rowcount}
+
+
+@app.delete("/api/drugs/{drug_id}")
+def delete_drug(drug_id: int):
+    cur = service.conn.execute("DELETE FROM drugs WHERE id=?", (drug_id,))
+    service.conn.commit()
+    if cur.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Not found")
+    return {"deleted": True}
+
+
+@app.get("/api/deliveries")
+def list_deliveries():
+    # Basic list for frontend expectations; maps delivery_date -> scheduled_for
+    cur = service.conn.execute(
+        """
+        SELECT id, patient_id, drug_id, delivery_date AS scheduled_for, status,
+               1 AS quantity, NULL AS notes
+        FROM delivery_logs
+        ORDER BY id DESC
+        """
+    )
+    return [dict(r) for r in cur.fetchall()]
+
+
+@app.delete("/api/deliveries/{delivery_id}")
+def delete_delivery(delivery_id: int):
+    cur = service.conn.execute("DELETE FROM delivery_logs WHERE id=?", (delivery_id,))
+    service.conn.commit()
+    if cur.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Not found")
+    return {"deleted": True}
 
 
 @app.on_event("shutdown")

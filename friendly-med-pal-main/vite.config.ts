@@ -8,6 +8,15 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    // Proxy API calls during development to the Flask backend (running on 5000)
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+        // Do not secure because we are using http
+        secure: false,
+      }
+    }
   },
   build: {
     outDir: 'dist',

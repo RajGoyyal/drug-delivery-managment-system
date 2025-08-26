@@ -141,6 +141,20 @@
             <input name="dosage" placeholder="Dosage" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
             <input name="stock" type="number" min="0" placeholder="Stock" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
             <input name="reorder_level" type="number" min="0" placeholder="Reorder Level" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
+            <div class="flex items-center gap-2 mt-1">
+              <button type="button" id="drug-batch-toggle" class="text-[11px] px-2 py-1 rounded bg-slate-600 hover:bg-slate-500 border border-slate-500">Batch Details</button>
+              <span class="text-[11px] text-slate-400">Provide batch metadata when adding initial stock.</span>
+            </div>
+            <div id="drug-batch-extra" class="grid gap-3 md:grid-cols-2 hidden bg-slate-700/30 p-3 rounded border border-slate-600/60">
+              <input name="batch_no" placeholder="Batch No *" class="border border-slate-600 rounded px-3 py-2 bg-slate-800 placeholder-slate-400 text-slate-100" />
+              <input name="isbn" placeholder="ISBN" class="border border-slate-600 rounded px-3 py-2 bg-slate-800 placeholder-slate-400 text-slate-100" />
+              <input name="producer" placeholder="Producer" class="border border-slate-600 rounded px-3 py-2 bg-slate-800 placeholder-slate-400 text-slate-100" />
+              <input name="transporter" placeholder="Transporter" class="border border-slate-600 rounded px-3 py-2 bg-slate-800 placeholder-slate-400 text-slate-100" />
+              <label class="flex flex-col gap-1 text-[11px]">Mfg Date <input type="date" name="mfg_date" class="border border-slate-600 rounded px-2 py-1 bg-slate-800 text-slate-100" /></label>
+              <label class="flex flex-col gap-1 text-[11px]">Exp Date <input type="date" name="exp_date" class="border border-slate-600 rounded px-2 py-1 bg-slate-800 text-slate-100" /></label>
+              <textarea name="batch_notes" rows="2" placeholder="Batch Notes" class="md:col-span-2 border border-slate-600 rounded px-3 py-2 bg-slate-800 placeholder-slate-400 text-slate-100 resize-y"></textarea>
+              <div class="md:col-span-2 text-[10px] text-slate-400">If you enter an initial Stock value, batch details are required (at least Batch No). Stock will be added via batch record.</div>
+            </div>
             <div class="flex items-center gap-3">
               <button class="bg-indigo-600 hover:bg-indigo-500 text-white rounded px-4 py-2 font-medium disabled:opacity-50 flex items-center gap-2" id="drug-submit"><span>Add Drug</span><span class="hidden spinner" id="drug-spinner"></span></button>
               <p class="text-xs text-red-500" id="drug-error"></p>
@@ -396,10 +410,10 @@
                 <th data-sort="dosage" class="py-2 px-3 font-medium cursor-pointer">Dosage</th>
                 <th data-sort="stock" class="py-2 px-3 font-medium cursor-pointer">Stock</th>
                 <th data-sort="reorder_level" class="py-2 px-3 font-medium cursor-pointer">Reorder</th>
-+                  <th class="px-3 py-2">Pend Qty</th>
-+                  <th class="px-3 py-2">Daily Avg</th>
-+                  <th class="px-3 py-2">Days Supply</th>
-                <th data-sort="status" class="py-2 px-3 font-medium cursor-pointer">Status</th>
+                <th data-sort="pending_quantity" class="py-2 px-3 font-medium cursor-pointer">Pend Qty</th>
+                <th data-sort="daily_avg" class="py-2 px-3 font-medium cursor-pointer">Daily Avg</th>
+                <th data-sort="days_supply" class="py-2 px-3 font-medium cursor-pointer">Days Supply</th>
+                <th class="py-2 px-3 font-medium">Status</th>
               </tr>
             </thead>
             <tbody id="all-drugs-body" class="divide-y divide-slate-800"></tbody>
@@ -556,11 +570,77 @@
               </div>
               <div class="flex flex-col gap-1"><label for="inv-adjust-delta" class="text-slate-400">Delta (+/-)</label><input id="inv-adjust-delta" type="number" class="px-2 py-1 rounded bg-slate-700 border border-slate-600" required placeholder="e.g. 25 or -10"></div>
               <div class="flex flex-col gap-1"><label for="inv-adjust-reason" class="text-slate-400">Reason</label><input id="inv-adjust-reason" class="px-2 py-1 rounded bg-slate-700 border border-slate-600" placeholder="manual"></div>
+              <div class="flex items-center justify-between -mb-1">
+                <button type="button" id="inv-adjust-batch-toggle" class="text-[10px] px-2 py-1 rounded bg-slate-600 hover:bg-slate-500 border border-slate-500">Batch Details</button>
+                <span class="text-[10px] text-slate-500">Provide metadata for additions</span>
+              </div>
+              <div id="inv-adjust-batch-extra" class="hidden flex flex-col gap-2 border border-slate-600/60 rounded p-3 bg-slate-700/30">
+                <div class="text-[10px] text-slate-400 -mt-1">Batch details required when increasing stock.</div>
+                <div class="grid grid-cols-2 gap-2">
+                  <input id="inv-adjust-batch_no" placeholder="Batch No *" class="px-2 py-1 rounded bg-slate-800 border border-slate-600 text-[11px]" />
+                  <input id="inv-adjust-isbn" placeholder="ISBN" class="px-2 py-1 rounded bg-slate-800 border border-slate-600 text-[11px]" />
+                  <input id="inv-adjust-producer" placeholder="Producer" class="px-2 py-1 rounded bg-slate-800 border border-slate-600 text-[11px]" />
+                  <input id="inv-adjust-transporter" placeholder="Transporter" class="px-2 py-1 rounded bg-slate-800 border border-slate-600 text-[11px]" />
+                  <label class="flex flex-col gap-1 text-[10px]">Mfg<input type="date" id="inv-adjust-mfg_date" class="px-2 py-1 rounded bg-slate-800 border border-slate-600 text-[11px]"></label>
+                  <label class="flex flex-col gap-1 text-[10px]">Exp<input type="date" id="inv-adjust-exp_date" class="px-2 py-1 rounded bg-slate-800 border border-slate-600 text-[11px]"></label>
+                  <textarea id="inv-adjust-notes" rows="2" placeholder="Batch Notes" class="col-span-2 px-2 py-1 rounded bg-slate-800 border border-slate-600 text-[11px] resize-y"></textarea>
+                </div>
+              </div>
               <div class="flex items-center justify-end gap-2 pt-2">
                 <button type="button" id="inv-adjust-cancel" class="text-[11px] px-3 py-1.5 rounded bg-slate-600 hover:bg-slate-500">Cancel</button>
                 <button type="submit" class="text-[11px] px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-2"><span>Apply</span><span class="spinner hidden" id="inv-adjust-spin"></span></button>
               </div>
               <div id="inv-adjust-error" class="text-[11px] text-rose-400"></div>
+            </form>
+          </div>
+        </div>
+        <!-- Add Batch Modal -->
+        <div id="inv-batch-modal" class="hidden fixed inset-0 z-40 items-start justify-center pt-16 bg-slate-900/70 backdrop-blur-sm">
+          <div class="w-full max-w-lg bg-slate-800 border border-slate-700 rounded-xl p-5 flex flex-col gap-4 max-h-[80vh]">
+            <div class="flex items-center justify-between"><h3 class="font-semibold text-sm" id="inv-batch-title">Add Drug Batch</h3><button id="inv-batch-close" class="text-slate-400 hover:text-slate-200">&times;</button></div>
+            <form id="inv-batch-form" class="grid gap-3 text-xs md:grid-cols-2 overflow-auto pr-1">
+              <input type="hidden" id="inv-batch-drug-id" />
+              <div class="md:col-span-2 flex flex-col gap-1"><label class="text-slate-400 text-[11px]">Drug</label><input id="inv-batch-drug-name" disabled class="px-2 py-1 rounded bg-slate-700 border border-slate-600" /></div>
+              <div class="flex flex-col gap-1"><label class="text-slate-400 text-[11px]">Batch No</label><input id="inv-batch-batch_no" placeholder="Batch code" class="px-2 py-1 rounded bg-slate-700 border border-slate-600" /></div>
+              <div class="flex flex-col gap-1"><label class="text-slate-400 text-[11px]">ISBN</label><input id="inv-batch-isbn" placeholder="ISBN" class="px-2 py-1 rounded bg-slate-700 border border-slate-600" /></div>
+              <div class="flex flex-col gap-1"><label class="text-slate-400 text-[11px]">Producer</label><input id="inv-batch-producer" placeholder="Producer" class="px-2 py-1 rounded bg-slate-700 border border-slate-600" /></div>
+              <div class="flex flex-col gap-1"><label class="text-slate-400 text-[11px]">Transporter</label><input id="inv-batch-transporter" placeholder="Transporter" class="px-2 py-1 rounded bg-slate-700 border border-slate-600" /></div>
+              <div class="flex flex-col gap-1"><label class="text-slate-400 text-[11px]">Mfg Date</label><input type="date" id="inv-batch-mfg_date" class="px-2 py-1 rounded bg-slate-700 border border-slate-600" /></div>
+              <div class="flex flex-col gap-1"><label class="text-slate-400 text-[11px]">Exp Date</label><input type="date" id="inv-batch-exp_date" class="px-2 py-1 rounded bg-slate-700 border border-slate-600" /></div>
+              <div class="flex flex-col gap-1"><label class="text-slate-400 text-[11px]">Quantity <span class="text-rose-400">*</span></label><input type="number" id="inv-batch-quantity" min="1" required placeholder="e.g. 100" class="px-2 py-1 rounded bg-slate-700 border border-slate-600" /></div>
+              <div class="md:col-span-2 flex flex-col gap-1"><label class="text-slate-400 text-[11px]">Notes</label><textarea id="inv-batch-notes" rows="2" class="px-2 py-1 rounded bg-slate-700 border border-slate-600 resize-y" placeholder="Optional notes"></textarea></div>
+              <div class="md:col-span-2 flex items-center justify-end gap-2 pt-1">
+                <button type="button" id="inv-batch-cancel" class="px-3 py-1.5 rounded bg-slate-600 hover:bg-slate-500 text-[11px]">Cancel</button>
+                <button type="submit" class="px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] flex items-center gap-2"><span>Save Batch</span><span class="spinner hidden" id="inv-batch-spin"></span></button>
+              </div>
+              <div id="inv-batch-error" class="md:col-span-2 text-[11px] text-rose-400"></div>
+              <div class="md:col-span-2 grid grid-cols-2 gap-4 border-t border-slate-700 pt-3 mt-1">
+                <div class="flex flex-col gap-1 text-[11px]"><span class="uppercase tracking-wide text-slate-400">Recent Batches</span><ul id="inv-batch-recent" class="space-y-1 max-h-32 overflow-auto"></ul></div>
+                <div class="flex flex-col gap-1 text-[11px]"><span class="uppercase tracking-wide text-slate-400">Recent Removals</span><ul id="inv-batch-removals" class="space-y-1 max-h-32 overflow-auto"></ul></div>
+              </div>
+            </form>
+          </div>
+        </div>
+        <!-- Remove Stock Modal -->
+        <div id="inv-remove-modal" class="hidden fixed inset-0 z-40 items-start justify-center pt-24 bg-slate-900/70 backdrop-blur-sm">
+          <div class="w-full max-w-md bg-slate-800 border border-slate-700 rounded-xl p-5 flex flex-col gap-4 max-h-[70vh]">
+            <div class="flex items-center justify-between"><h3 class="font-semibold text-sm" id="inv-remove-title">Remove Stock</h3><button id="inv-remove-close" class="text-slate-400 hover:text-slate-200">&times;</button></div>
+            <form id="inv-remove-form" class="flex flex-col gap-3 text-xs overflow-auto pr-1">
+              <input type="hidden" id="inv-remove-drug-id" />
+              <div class="flex flex-col gap-1"><label class="text-slate-400 text-[11px]">Drug</label><input id="inv-remove-drug-name" disabled class="px-2 py-1 rounded bg-slate-700 border border-slate-600" /></div>
+              <div class="flex flex-col gap-1"><label class="text-slate-400 text-[11px]">Batch No (optional)</label><input id="inv-remove-batch_no" placeholder="Batch reference" class="px-2 py-1 rounded bg-slate-700 border border-slate-600" /></div>
+              <div class="flex flex-col gap-1"><label class="text-slate-400 text-[11px]">Quantity <span class="text-rose-400">*</span></label><input type="number" id="inv-remove-quantity" min="1" required placeholder="e.g. 5" class="px-2 py-1 rounded bg-slate-700 border border-slate-600" /></div>
+              <div class="flex flex-col gap-1"><label class="text-slate-400 text-[11px]">Reason <span class="text-rose-400">*</span></label><input id="inv-remove-reason" placeholder="expired / damaged / return" class="px-2 py-1 rounded bg-slate-700 border border-slate-600" required /></div>
+              <div class="flex flex-col gap-1"><label class="text-slate-400 text-[11px]">Notes</label><textarea id="inv-remove-notes" rows="2" class="px-2 py-1 rounded bg-slate-700 border border-slate-600 resize-y" placeholder="Optional notes"></textarea></div>
+              <div class="flex items-center justify-end gap-2 pt-1">
+                <button type="button" id="inv-remove-cancel" class="px-3 py-1.5 rounded bg-slate-600 hover:bg-slate-500 text-[11px]">Cancel</button>
+                <button type="submit" class="px-3 py-1.5 rounded bg-rose-600 hover:bg-rose-500 text-white text-[11px] flex items-center gap-2"><span>Remove</span><span class="spinner hidden" id="inv-remove-spin"></span></button>
+              </div>
+              <div id="inv-remove-error" class="text-[11px] text-rose-400"></div>
+              <div class="grid grid-cols-2 gap-4 border-t border-slate-700 pt-3">
+                <div class="flex flex-col gap-1 text-[11px]"><span class="uppercase tracking-wide text-slate-400">Recent Batches</span><ul id="inv-remove-recent-batches" class="space-y-1 max-h-32 overflow-auto"></ul></div>
+                <div class="flex flex-col gap-1 text-[11px]"><span class="uppercase tracking-wide text-slate-400">Recent Removals</span><ul id="inv-remove-recent-removals" class="space-y-1 max-h-32 overflow-auto"></ul></div>
+              </div>
             </form>
           </div>
         </div>
@@ -981,8 +1061,6 @@
               <span class="ml-1 text-[10px] px-1 py-0.5 rounded ${(d.stock??0) <= (d.reorder_level??0) ? 'bg-red-600/30 text-red-300' : 'bg-slate-600/40 text-slate-300'}">stk:${d.stock??0}</span>
               <span class="ml-1 text-[10px] px-1 py-0.5 rounded bg-slate-700/60 text-slate-300">rl:${d.reorder_level??0}</span></span>`;
           const actions=document.createElement('div'); actions.className='flex gap-1';
-          const adjust=document.createElement('button'); adjust.className='px-2 py-0.5 text-[10px] rounded bg-indigo-600/60 hover:bg-indigo-600'; adjust.textContent='Adj';
-          adjust.onclick=async()=>{ const deltaStr=prompt('Adjust stock by (e.g. 25 or -10)'); if(deltaStr===null){ return; } const delta=parseInt(deltaStr,10); if(isNaN(delta)){ alert('Invalid number'); return; } const reason=prompt('Reason','manual'); try { await call('/api/inventory/adjust',{method:'POST', body: JSON.stringify({drug_id:d.id, delta, reason})}); toast('Inventory adjusted','success'); refreshDrugs(); loadStats(); renderAlerts(); } catch(e){ console.error('Adjust failed', e); toast('Adjust failed','error'); } };
           const edit=document.createElement('button'); edit.className='px-2 py-0.5 text-[10px] rounded bg-slate-700 hover:bg-slate-600'; edit.textContent='Edit';
           edit.onclick=async()=>{
             const name=prompt('Name', d.name); if(name===null) return;
@@ -994,7 +1072,7 @@
           };
           const del=document.createElement('button'); del.className='px-2 py-0.5 text-[10px] rounded bg-red-600/80 hover:bg-red-600'; del.textContent='Del';
           del.onclick=async()=>{ if(!confirmAction('Delete drug and related deliveries?')) { return; } try { await call(`/api/drugs/${d.id}`, {method:'DELETE'}); toast('Drug deleted','success'); refreshDrugs(); refreshDeliveries(); loadStats(); } catch(e){ console.error('Drug delete failed', e); toast('Delete failed','error'); } };
-          actions.append(adjust, edit, del); li.append(actions); list.append(li);
+          actions.append(edit, del); li.append(actions); list.append(li);
         });
       }
 
@@ -1087,23 +1165,60 @@
       document.getElementById('drug-form').addEventListener('submit', async e=>{
         e.preventDefault();
         const fd = new FormData(e.target);
-        const body = Object.fromEntries(fd.entries());
+        const raw = Object.fromEntries(fd.entries());
+        const initialStock = parseInt(raw.stock||'0',10)||0;
         const btn=document.getElementById('drug-submit'); const sp=document.getElementById('drug-spinner'); const err=document.getElementById('drug-error');
         err.textContent=''; btn.disabled=true; sp.classList.remove('hidden');
         try {
-          await call('/api/drugs', {method:'POST', body: JSON.stringify(body)});
-          e.target.reset();
-          toast('Drug added','success');
-          await refreshDrugs();
-          loadStats();
-          // If inventory module already initialized, refresh its data so new stock shows immediately
-          if(typeof inventoryBooted !== 'undefined' && inventoryBooted && typeof loadInventoryData==='function'){
-            try { await loadInventoryData(); } catch{ }
-          }
+          // Always create drug with zero stock if user provided stock so batch metadata can capture it
+            let createPayload={...raw};
+            if(initialStock>0){ createPayload.stock=0; }
+            const created = await call('/api/drugs', {method:'POST', body: JSON.stringify(createPayload)});
+            toast('Drug added','success');
+            await refreshDrugs(); loadStats();
+            if(typeof inventoryBooted !== 'undefined' && inventoryBooted && typeof loadInventoryData==='function'){
+              try { await loadInventoryData(); } catch{}
+            }
+            // If user intended to set starting stock, open batch modal prefilled to collect batch details
+            if(initialStock>0 && created && created.id){
+              // If inline batch section visible and has batch_no, create batch directly without modal
+              const inlineBatchVisible = !document.getElementById('drug-batch-extra').classList.contains('hidden');
+              const batchNo = raw.batch_no && raw.batch_no.trim();
+              if(!inlineBatchVisible && !batchNo){
+                // Force user to provide batch metadata instead of silent modal; auto open inline section
+                document.getElementById('drug-batch-extra').classList.remove('hidden');
+                err.textContent='Batch No required when starting stock > 0';
+                return; // keep form populated
+              }
+              if(inlineBatchVisible && !batchNo){
+                err.textContent='Batch No required when starting stock > 0';
+                return;
+              }
+              if(inlineBatchVisible && batchNo){
+                // validate dates
+                if(raw.mfg_date && raw.exp_date && raw.exp_date < raw.mfg_date){ throw new Error('Expiry before manufacturing'); }
+                await call('/api/drug_batches',{method:'POST', body: JSON.stringify({drug_id: created.id, batch_no: batchNo, isbn: raw.isbn||null, producer: raw.producer||null, transporter: raw.transporter||null, mfg_date: raw.mfg_date||null, exp_date: raw.exp_date||null, quantity: initialStock, notes: raw.batch_notes||null})});
+                toast('Initial batch recorded','success');
+                await loadInventoryData(); fetchInventoryTransactions();
+                e.target.reset();
+              } else {
+                // Fallback to modal approach
+                openBatchModal(created.id, created);
+                const qtyEl=document.getElementById('inv-batch-quantity'); if(qtyEl){ qtyEl.value=String(initialStock); }
+                const notesEl=document.getElementById('inv-batch-notes'); if(notesEl){ notesEl.placeholder='Notes (optional)'; }
+              }
+            } else {
+              e.target.reset();
+            }
+        } catch(ex){
+          console.error(ex); err.textContent=ex.message||'Failed'; toast('Add drug failed','error');
+        } finally {
+          btn.disabled=false; sp.classList.add('hidden');
         }
-        catch(ex){ err.textContent=ex.message; toast('Add drug failed','error'); }
-        finally { btn.disabled=false; sp.classList.add('hidden'); }
       });
+      // Toggle inline batch details
+      const batchToggle=document.getElementById('drug-batch-toggle');
+      if(batchToggle){ batchToggle.addEventListener('click', ()=>{ const box=document.getElementById('drug-batch-extra'); box.classList.toggle('hidden'); }); }
 
       document.getElementById('delivery-form').addEventListener('submit', async e=>{
         e.preventDefault();
@@ -1540,11 +1655,36 @@
         const st=overviewState.drugs;
         st.pageSize=Number(document.getElementById('all-drugs-pagesize').value)||25;
         st.search=(document.getElementById('all-drugs-search').value||'').toLowerCase();
-        let rows=(window.__drugs||[]).filter(d=> !st.search || d.name.toLowerCase().includes(st.search) || (d.dosage||'').toLowerCase().includes(st.search) || String(d.id)===st.search);
+        // Build summary map from inventoryState if available
+        let summaryMap=new Map();
+        if(window.inventoryState && Array.isArray(inventoryState.summary)){
+          inventoryState.summary.forEach(s=> summaryMap.set(s.id,s));
+        }
+        let rows=(window.__drugs||[]).map(d=> ({
+          ...d,
+          ...(summaryMap.get(d.id)||{})
+        })).filter(d=> !st.search || d.name.toLowerCase().includes(st.search) || (d.dosage||'').toLowerCase().includes(st.search) || String(d.id)===st.search);
         rows=applySort(rows, st.sortKey, st.sortDir);
         const total=rows.length;
         rows=slicePage(rows, st.page, st.pageSize);
-        body.innerHTML=rows.map(d=>`<tr class='hover:bg-slate-700/40 transition'><td class='px-3 py-2 font-medium text-slate-300'>${d.id}</td><td class='px-3 py-2'>${escapeHTML(d.name)}</td><td class='px-3 py-2 text-slate-400'>${d.dosage? escapeHTML(d.dosage):'—'}</td><td class='px-3 py-2 text-slate-400'>${d.frequency? escapeHTML(d.frequency):'—'}</td></tr>`).join('');
+        body.innerHTML=rows.map(d=>{
+          const low = (d.stock??0) <= (d.reorder_level??0);
+          const pending = d.pending_quantity ?? 0;
+          const daily = d.daily_avg ?? 0;
+          const daysSupply = d.days_supply ?? (daily? Math.round((d.stock||0)/daily): '—');
+          const status = low? '<span class="px-2 py-0.5 rounded text-[10px] bg-red-600/30 text-red-300 font-medium">Low</span>' : '<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-600/30 text-emerald-300 font-medium">OK</span>';
+          return `<tr class='hover:bg-slate-700/40 transition'>
+            <td class='px-3 py-2 font-medium text-slate-300'>${d.id}</td>
+            <td class='px-3 py-2'>${escapeHTML(d.name)}</td>
+            <td class='px-3 py-2 text-slate-400'>${d.dosage? escapeHTML(d.dosage):'—'}</td>
+            <td class='px-3 py-2 text-slate-400'>${d.stock??0}</td>
+            <td class='px-3 py-2 text-slate-400'>${d.reorder_level??0}</td>
+            <td class='px-3 py-2 text-slate-400'>${pending}</td>
+            <td class='px-3 py-2 text-slate-400'>${daily||'—'}</td>
+            <td class='px-3 py-2 text-slate-400'>${daysSupply}</td>
+            <td class='px-3 py-2'>${status}</td>
+          </tr>`;
+        }).join('');
         empty.textContent= total? '' : 'No drugs found';
         info.textContent= total? `Showing ${(st.page-1)*st.pageSize+1}-${Math.min(total, st.page*st.pageSize)} of ${total}` : '';
         pager(total, st.page, st.pageSize, pagerEl, 'drugs', renderAllDrugs);
@@ -1811,7 +1951,11 @@
             <td class='px-3 py-2 text-slate-300'>${ds}</td>
             <td class='px-3 py-2'>${badge}</td>
             <td class='px-3 py-2 text-right'>
-              <button class='text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600' data-inv-adjust='${d.id}'>Adjust</button>
+              <div class='inline-flex gap-1'>
+                <button class='text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600' data-inv-adjust='${d.id}' title='Quick delta adjust'>Adjust</button>
+                <button class='text-[10px] px-2 py-1 rounded bg-indigo-700/80 hover:bg-indigo-600' data-inv-batch='${d.id}' title='Add batch'>Batch</button>
+                <button class='text-[10px] px-2 py-1 rounded bg-rose-700/80 hover:bg-rose-600' data-inv-remove='${d.id}' title='Remove stock'>Remove</button>
+              </div>
             </td>
           </tr>`;
         }).join('');
@@ -1853,7 +1997,7 @@
         'inv-adjust-close': ()=> closeInventoryAdjust(),
         'inv-adjust-cancel': ()=> closeInventoryAdjust()
       };
-      document.addEventListener('click', e=>{ const t=e.target; if(t.dataset && t.dataset.sort){ const key=t.dataset.sort; if(inventoryState.sort.key===key){ inventoryState.sort.dir= inventoryState.sort.dir==='asc'? 'desc':'asc'; } else { inventoryState.sort.key=key; inventoryState.sort.dir='asc'; } renderInventory(); return; } if(t.matches && t.matches('button[data-inv-adjust]')){ const id=Number(t.getAttribute('data-inv-adjust')); openInventoryAdjust(id); return; } const fn=inventoryClickHandlers[t.id]; if(fn){ fn(); } });
+  document.addEventListener('click', e=>{ const t=e.target; if(t.dataset && t.dataset.sort){ const key=t.dataset.sort; if(inventoryState.sort.key===key){ inventoryState.sort.dir= inventoryState.sort.dir==='asc'? 'desc':'asc'; } else { inventoryState.sort.key=key; inventoryState.sort.dir='asc'; } renderInventory(); return; } if(t.matches && t.matches('button[data-inv-adjust]')){ openInventoryAdjust(Number(t.getAttribute('data-inv-adjust'))); return; } if(t.matches && t.matches('button[data-inv-batch]')){ openBatchModal(Number(t.getAttribute('data-inv-batch'))); return; } if(t.matches && t.matches('button[data-inv-remove]')){ openRemoveModal(Number(t.getAttribute('data-inv-remove'))); return; } const fn=inventoryClickHandlers[t.id]; if(fn){ fn(); } });
       // Global refresh buttons wiring
       // Single delegated refresh handler (dedup & robust)
       if(!window.__refreshDelegated){
@@ -1882,9 +2026,46 @@
           finally { setLoading(false); }
         });
       }
-      function openInventoryAdjust(id){ const modal=document.getElementById('inv-adjust-modal'); const drug=inventoryState.merged.find(d=> d.id===id); if(!drug){ return; } modal.classList.remove('hidden'); modal.classList.add('flex'); modal.dataset.drugId=id; document.getElementById('inv-adjust-name').value=`${drug.name} (${drug.dosage||''})`; document.getElementById('inv-adjust-current').value=drug.stock||0; document.getElementById('inv-adjust-reorder').value=drug.reorder_level||0; document.getElementById('inv-adjust-delta').value=''; document.getElementById('inv-adjust-reason').value='manual'; document.getElementById('inv-adjust-error').textContent=''; }
+  function openInventoryAdjust(id){ const modal=document.getElementById('inv-adjust-modal'); const drug=inventoryState.merged.find(d=> d.id===id); if(!drug){ return; } modal.classList.remove('hidden'); modal.classList.add('flex'); modal.dataset.drugId=id; document.getElementById('inv-adjust-name').value=`${drug.name} (${drug.dosage||''})`; document.getElementById('inv-adjust-current').value=drug.stock||0; document.getElementById('inv-adjust-reorder').value=drug.reorder_level||0; document.getElementById('inv-adjust-delta').value=''; document.getElementById('inv-adjust-reason').value='manual'; document.getElementById('inv-adjust-error').textContent=''; ['batch_no','isbn','producer','transporter','mfg_date','exp_date','notes'].forEach(f=>{ const el=document.getElementById('inv-adjust-'+f); if(el) el.value=''; }); document.getElementById('inv-adjust-batch-extra').classList.add('hidden'); }
       function closeInventoryAdjust(){ const modal=document.getElementById('inv-adjust-modal'); modal.classList.add('hidden'); modal.classList.remove('flex'); }
-      document.getElementById('inv-adjust-form').addEventListener('submit', async e=>{ e.preventDefault(); const modal=document.getElementById('inv-adjust-modal'); const id=Number(modal.dataset.drugId); const delta=parseInt(document.getElementById('inv-adjust-delta').value,10); const reason=document.getElementById('inv-adjust-reason').value||'manual'; if(isNaN(delta)||!delta){ document.getElementById('inv-adjust-error').textContent='Enter a non-zero number'; return; } const spin=document.getElementById('inv-adjust-spin'); spin.classList.remove('hidden'); try { await call('/api/inventory/adjust',{method:'POST', body: JSON.stringify({drug_id:id, delta, reason})}); toast('Adjusted','success'); await loadInventoryData(); fetchInventoryTransactions(); closeInventoryAdjust(); } catch(err){ console.error(err); document.getElementById('inv-adjust-error').textContent='Adjustment failed'; } finally { spin.classList.add('hidden'); } });
+      document.getElementById('inv-adjust-delta').addEventListener('input', e=>{ const v=parseInt(e.target.value,10); const box=document.getElementById('inv-adjust-batch-extra'); if(!isNaN(v) && v>0){ box.classList.remove('hidden'); } else { box.classList.add('hidden'); } });
+  const adjustBatchToggle=document.getElementById('inv-adjust-batch-toggle'); if(adjustBatchToggle){ adjustBatchToggle.addEventListener('click', ()=>{ document.getElementById('inv-adjust-batch-extra').classList.toggle('hidden'); }); }
+      document.getElementById('inv-adjust-form').addEventListener('submit', async e=>{ e.preventDefault(); const modal=document.getElementById('inv-adjust-modal'); const id=Number(modal.dataset.drugId); const delta=parseInt(document.getElementById('inv-adjust-delta').value,10); const reason=document.getElementById('inv-adjust-reason').value||'manual'; const errEl=document.getElementById('inv-adjust-error'); errEl.textContent=''; if(isNaN(delta)||!delta){ errEl.textContent='Enter a non-zero number'; return; } const spin=document.getElementById('inv-adjust-spin'); spin.classList.remove('hidden'); try { if(delta>0){ // require batch metadata
+            const batch_no=document.getElementById('inv-adjust-batch_no').value.trim(); if(!batch_no){ throw new Error('Batch No required'); }
+            const mfg=document.getElementById('inv-adjust-mfg_date').value; const exp=document.getElementById('inv-adjust-exp_date').value; if(mfg && exp && exp < mfg){ throw new Error('Expiry before manufacturing'); }
+            await call('/api/drug_batches',{method:'POST', body: JSON.stringify({drug_id:id, batch_no, isbn:document.getElementById('inv-adjust-isbn').value||null, producer:document.getElementById('inv-adjust-producer').value||null, transporter:document.getElementById('inv-adjust-transporter').value||null, mfg_date:mfg||null, exp_date:exp||null, quantity:delta, notes:document.getElementById('inv-adjust-notes').value||null})});
+            toast('Batch added','success');
+          } else { // negative delta path
+            await call('/api/inventory/adjust',{method:'POST', body: JSON.stringify({drug_id:id, delta, reason})}); toast('Reduced','success'); }
+          await loadInventoryData(); fetchInventoryTransactions(); closeInventoryAdjust(); } catch(err){ console.error(err); errEl.textContent= err.message || 'Adjustment failed'; } finally { spin.classList.add('hidden'); } });
+      // Batch / Removal Modals
+      async function loadRecentBatchRemoval(drug_id){
+        try {
+          const [batches, removals] = await Promise.all([
+            call(`/api/drug_batches?drug_id=${drug_id}`),
+            call(`/api/drug_removals?drug_id=${drug_id}`)
+          ]);
+          const bList=document.getElementById('inv-batch-recent'); if(bList){ bList.innerHTML=(batches||[]).slice(0,8).map(b=>`<li class='flex justify-between gap-2'><span class='truncate'>${escapeHTML(b.batch_no||'#'+b.id)}</span><span class='text-emerald-300 font-mono'>+${b.quantity}</span></li>`).join('')||'<li class="text-slate-500">None</li>'; }
+          const rList=document.getElementById('inv-batch-removals'); if(rList){ rList.innerHTML=(removals||[]).slice(0,8).map(r=>`<li class='flex justify-between gap-2'><span class='truncate'>${escapeHTML(r.reason||('#'+r.id))}</span><span class='text-rose-300 font-mono'>-${r.quantity}</span></li>`).join('')||'<li class="text-slate-500">None</li>'; }
+          const rb=document.getElementById('inv-remove-recent-batches'); if(rb){ rb.innerHTML=(batches||[]).slice(0,8).map(b=>`<li class='flex justify-between gap-2'><span class='truncate'>${escapeHTML(b.batch_no||'#'+b.id)}</span><span class='text-emerald-300 font-mono'>+${b.quantity}</span></li>`).join('')||'<li class="text-slate-500">None</li>'; }
+          const rr=document.getElementById('inv-remove-recent-removals'); if(rr){ rr.innerHTML=(removals||[]).slice(0,8).map(r=>`<li class='flex justify-between gap-2'><span class='truncate'>${escapeHTML(r.reason||('#'+r.id))}</span><span class='text-rose-300 font-mono'>-${r.quantity}</span></li>`).join('')||'<li class="text-slate-500">None</li>'; }
+        }catch(e){ console.warn('recent batch/removal load failed', e); }
+      }
+      function openBatchModal(id, drugOverride){ const modal=document.getElementById('inv-batch-modal'); let drug = drugOverride || (inventoryState.merged||[]).find(d=> d.id===id); if(!drug && window.__drugs){ drug = (window.__drugs||[]).find(d=> d.id===id); } if(!drug){ // minimal placeholder
+          drug = {id, name: 'Drug '+id, dosage: ''};
+      }
+        modal.classList.remove('hidden'); modal.classList.add('flex'); modal.dataset.drugId=id; document.getElementById('inv-batch-drug-id').value=id; document.getElementById('inv-batch-drug-name').value=`${drug.name} (${drug.dosage||''})`; ['batch_no','isbn','producer','transporter','mfg_date','exp_date','quantity','notes'].forEach(f=>{ const el=document.getElementById('inv-batch-'+f); if(el) el.value=''; }); document.getElementById('inv-batch-error').textContent=''; loadRecentBatchRemoval(id); }
+      function closeBatchModal(){ const m=document.getElementById('inv-batch-modal'); m.classList.add('hidden'); m.classList.remove('flex'); }
+      function openRemoveModal(id){ const modal=document.getElementById('inv-remove-modal'); const drug=inventoryState.merged.find(d=> d.id===id); if(!drug) return; modal.classList.remove('hidden'); modal.classList.add('flex'); modal.dataset.drugId=id; document.getElementById('inv-remove-drug-id').value=id; document.getElementById('inv-remove-drug-name').value=`${drug.name} (${drug.dosage||''})`; ['batch_no','quantity','reason','notes'].forEach(f=>{ const el=document.getElementById('inv-remove-'+f); if(el) el.value=''; }); document.getElementById('inv-remove-error').textContent=''; loadRecentBatchRemoval(id); }
+      function closeRemoveModal(){ const m=document.getElementById('inv-remove-modal'); m.classList.add('hidden'); m.classList.remove('flex'); }
+      document.getElementById('inv-batch-close').addEventListener('click', closeBatchModal);
+      document.getElementById('inv-batch-cancel').addEventListener('click', closeBatchModal);
+      document.getElementById('inv-remove-close').addEventListener('click', closeRemoveModal);
+      document.getElementById('inv-remove-cancel').addEventListener('click', closeRemoveModal);
+      document.getElementById('inv-batch-form').addEventListener('submit', async e=>{
+  e.preventDefault(); const id=Number(document.getElementById('inv-batch-drug-id').value); const qty=parseInt(document.getElementById('inv-batch-quantity').value,10); const mfg=document.getElementById('inv-batch-mfg_date').value; const exp=document.getElementById('inv-batch-exp_date').value; const errEl=document.getElementById('inv-batch-error'); errEl.textContent=''; if(isNaN(qty)||qty<=0){ errEl.textContent='Quantity must be positive'; return; } if(mfg && exp && exp < mfg){ errEl.textContent='Expiry must be after manufacturing date'; return; } const spin=document.getElementById('inv-batch-spin'); spin.classList.remove('hidden'); try { await call('/api/drug_batches',{method:'POST', body: JSON.stringify({drug_id:id, batch_no:document.getElementById('inv-batch-batch_no').value||null, isbn:document.getElementById('inv-batch-isbn').value||null, producer:document.getElementById('inv-batch-producer').value||null, transporter:document.getElementById('inv-batch-transporter').value||null, mfg_date:mfg||null, exp_date:exp||null, quantity:qty, notes:document.getElementById('inv-batch-notes').value||null })}); toast('Batch added','success'); await loadInventoryData(); fetchInventoryTransactions(); closeBatchModal(); const df=document.getElementById('drug-form'); if(df){ df.reset(); } } catch(err){ console.error(err); errEl.textContent='Failed to add batch'; } finally { spin.classList.add('hidden'); } });
+      document.getElementById('inv-remove-form').addEventListener('submit', async e=>{
+        e.preventDefault(); const id=Number(document.getElementById('inv-remove-drug-id').value); const qty=parseInt(document.getElementById('inv-remove-quantity').value,10); const reason=document.getElementById('inv-remove-reason').value.trim(); const errEl=document.getElementById('inv-remove-error'); errEl.textContent=''; if(isNaN(qty)||qty<=0){ errEl.textContent='Quantity must be positive'; return; } if(!reason){ errEl.textContent='Reason required'; return; } const spin=document.getElementById('inv-remove-spin'); spin.classList.remove('hidden'); try { await call('/api/drug_removals',{method:'POST', body: JSON.stringify({drug_id:id, batch_no:document.getElementById('inv-remove-batch_no').value||null, reason, quantity:qty, notes:document.getElementById('inv-remove-notes').value||null })}); toast('Stock removed','success'); await loadInventoryData(); fetchInventoryTransactions(); closeRemoveModal(); } catch(err){ console.error(err); errEl.textContent= (err && err.detail) || 'Removal failed'; } finally { spin.classList.add('hidden'); } });
   // override activateTab to ensure loadInventoryData only once until manual refresh
   const origActivateInv=activateTab; let inventoryBooted=false;
   activateTab=function(tab){ origActivateInv(tab); if(tab==='inventory'){ if(!inventoryBooted){ inventoryBooted=true; loadInventoryData(); fetchInventoryTransactions(); } } };

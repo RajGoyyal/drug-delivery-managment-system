@@ -87,6 +87,36 @@ def init_db() -> None:
             FOREIGN KEY(drug_id) REFERENCES drugs(id)
         )"""
         )
+        # Drug batch receipts (additions)
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS drug_batches (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            drug_id INTEGER NOT NULL,
+            batch_no TEXT,
+            isbn TEXT,
+            producer TEXT,
+            transporter TEXT,
+            mfg_date TEXT,
+            exp_date TEXT,
+            quantity INTEGER NOT NULL,
+            notes TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY(drug_id) REFERENCES drugs(id)
+        )"""
+        )
+        # Drug removals (write-offs / returns / damaged)
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS drug_removals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            drug_id INTEGER NOT NULL,
+            batch_no TEXT,
+            reason TEXT,
+            quantity INTEGER NOT NULL,
+            notes TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY(drug_id) REFERENCES drugs(id)
+        )"""
+        )
         # Lightweight migration: ensure stock / reorder_level exist (older DBs)
         try:
             existing_cols = {r[1] for r in cur.execute("PRAGMA table_info(drugs)").fetchall()}
@@ -458,6 +488,115 @@ def inventory_adjust():
          )
         row = cur.execute(SQL_DRUG_BY_ID, (drug_id,)).fetchone()
     return jsonify(row_to_dict(row))
+
+
+@app.post("/api/drug_batches")
+def create_drug_batch():
+    data: Dict[str, Any] = request.get_json(force=True) or {}
+    drug_id = data.get("drug_id")
+    qty = data.get("quantity")
+    if drug_id is None or qty is None:
+        return jsonify({"detail": "drug_id and quantity required"}), 400
+    try:
+        qty = int(qty)
+        if qty <= 0:
+            raise ValueError
+    except Exception:
+        return jsonify({"detail": "quantity must be positive int"}), 400
+    with get_conn() as conn:
+        cur = conn.cursor()
+        row = cur.execute(SQL_DRUG_BY_ID, (drug_id,)).fetchone()
+        if not row:
+            return jsonify(NOT_FOUND), 404
+        # Insert batch and capture its id BEFORE other inserts modify lastrowid
+        cur.execute(
+            "INSERT INTO drug_batches(drug_id,batch_no,isbn,producer,transporter,mfg_date,exp_date,quantity,notes) VALUES (?,?,?,?,?,?,?,?,?)",
+            (
+                drug_id,
+                data.get("batch_no"),
+                data.get("isbn"),
+                data.get("producer"),
+                data.get("transporter"),
+                data.get("mfg_date"),
+                data.get("exp_date"),
+                qty,
+                data.get("notes"),
+            ),
+        )
+        batch_id = cur.lastrowid
+        # increment stock + log transaction (do not overwrite batch_id)
+        cur.execute("UPDATE drugs SET stock = stock + ? WHERE id=?", (qty, drug_id))
+        cur.execute(SQL_TXN_INSERT, (drug_id, qty, f"batch {data.get('batch_no') or ''}".strip()))
+        batch = cur.execute("SELECT * FROM drug_batches WHERE id=?", (batch_id,)).fetchone()
+        if not batch:
+            return jsonify({"detail": "batch insert failed"}), 500
+        drug = cur.execute(SQL_DRUG_BY_ID, (drug_id,)).fetchone()
+    return jsonify({"batch": row_to_dict(batch), "drug": row_to_dict(drug)})
+
+
+@app.get("/api/drug_batches")
+def list_drug_batches():
+    drug_id = request.args.get("drug_id")
+    with get_conn() as conn:
+        cur = conn.cursor()
+        if drug_id:
+            rows = cur.execute("SELECT * FROM drug_batches WHERE drug_id=? ORDER BY id DESC", (drug_id,)).fetchall()
+        else:
+            rows = cur.execute("SELECT * FROM drug_batches ORDER BY id DESC LIMIT 500").fetchall()
+    return jsonify([row_to_dict(r) for r in rows])
+
+
+@app.post("/api/drug_removals")
+def create_drug_removal():
+    data: Dict[str, Any] = request.get_json(force=True) or {}
+    drug_id = data.get("drug_id")
+    qty = data.get("quantity")
+    if drug_id is None or qty is None:
+        return jsonify({"detail": "drug_id and quantity required"}), 400
+    try:
+        qty = int(qty)
+        if qty <= 0:
+            raise ValueError
+    except Exception:
+        return jsonify({"detail": "quantity must be positive int"}), 400
+    with get_conn() as conn:
+        cur = conn.cursor()
+        row = cur.execute(SQL_DRUG_BY_ID, (drug_id,)).fetchone()
+        if not row:
+            return jsonify(NOT_FOUND), 404
+        current_stock = row["stock"] or 0
+        if qty > current_stock:
+            return jsonify({"detail": "not enough stock"}), 400
+        cur.execute(
+            "INSERT INTO drug_removals(drug_id,batch_no,reason,quantity,notes) VALUES (?,?,?,?,?)",
+            (
+                drug_id,
+                data.get("batch_no"),
+                data.get("reason"),
+                qty,
+                data.get("notes"),
+            ),
+        )
+        rid = cur.lastrowid  # capture removal id now
+        cur.execute("UPDATE drugs SET stock = stock - ? WHERE id=?", (qty, drug_id))
+        cur.execute(SQL_TXN_INSERT, (drug_id, -qty, f"removal {data.get('reason') or ''}".strip()))
+        rem = cur.execute("SELECT * FROM drug_removals WHERE id=?", (rid,)).fetchone()
+        if not rem:
+            return jsonify({"detail":"removal insert failed"}), 500
+        drug = cur.execute(SQL_DRUG_BY_ID, (drug_id,)).fetchone()
+    return jsonify({"removal": row_to_dict(rem), "drug": row_to_dict(drug)})
+
+
+@app.get("/api/drug_removals")
+def list_drug_removals():
+    drug_id = request.args.get("drug_id")
+    with get_conn() as conn:
+        cur = conn.cursor()
+        if drug_id:
+            rows = cur.execute("SELECT * FROM drug_removals WHERE drug_id=? ORDER BY id DESC", (drug_id,)).fetchall()
+        else:
+            rows = cur.execute("SELECT * FROM drug_removals ORDER BY id DESC LIMIT 500").fetchall()
+    return jsonify([row_to_dict(r) for r in rows])
 
 
 @app.get("/api/inventory/transactions")

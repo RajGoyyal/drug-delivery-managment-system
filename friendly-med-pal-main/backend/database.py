@@ -55,6 +55,48 @@ CREATE_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_delivery_logs_date ON delivery_logs(delivery_date);",
 ]
 
+# Additional inventory / batch related tables (added later in project lifecycle)
+CREATE_TABLE_INVENTORY_TRANSACTIONS = """
+CREATE TABLE IF NOT EXISTS inventory_transactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    drug_id INTEGER NOT NULL,
+    delta INTEGER NOT NULL,                 -- positive or negative change
+    reason TEXT,                             -- free-form reason / source
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (drug_id) REFERENCES drugs(id) ON DELETE CASCADE
+);
+"""
+
+CREATE_TABLE_DRUG_BATCHES = """
+CREATE TABLE IF NOT EXISTS drug_batches (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    drug_id INTEGER NOT NULL,
+    batch_no TEXT,
+    isbn TEXT,
+    producer TEXT,
+    transporter TEXT,
+    mfg_date TEXT,
+    exp_date TEXT,
+    quantity INTEGER NOT NULL CHECK(quantity > 0),
+    notes TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (drug_id) REFERENCES drugs(id) ON DELETE CASCADE
+);
+"""
+
+CREATE_TABLE_DRUG_REMOVALS = """
+CREATE TABLE IF NOT EXISTS drug_removals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    drug_id INTEGER NOT NULL,
+    batch_no TEXT,              -- optional: original batch reference / lot
+    reason TEXT NOT NULL,       -- e.g. 'expired', 'damaged', 'manual'
+    quantity INTEGER NOT NULL CHECK(quantity > 0),
+    notes TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (drug_id) REFERENCES drugs(id) ON DELETE CASCADE
+);
+"""
+
 
 def get_connection(db_path: Optional[str] = None) -> Connection:
     """Create and return a SQLite connection with sensible defaults.
@@ -82,6 +124,26 @@ def init_db(conn: Connection) -> None:
         conn.execute(CREATE_TABLE_PATIENTS)
         conn.execute(CREATE_TABLE_DRUGS)
         conn.execute(CREATE_TABLE_DELIVERY_LOGS)
+        # Newer tables
+        conn.execute(CREATE_TABLE_INVENTORY_TRANSACTIONS)
+        conn.execute(CREATE_TABLE_DRUG_BATCHES)
+        conn.execute(CREATE_TABLE_DRUG_REMOVALS)
         for ddl in CREATE_INDEXES:
             conn.execute(ddl)
+
+        # Lightweight migration: ensure 'stock' & 'reorder_level' columns exist on drugs
+        cur = conn.execute("PRAGMA table_info(drugs);")
+        existing_cols = {row[1] for row in cur.fetchall()}
+        if 'stock' not in existing_cols:
+            try:
+                conn.execute("ALTER TABLE drugs ADD COLUMN stock INTEGER NOT NULL DEFAULT 0;")
+                print("[DB] Added drugs.stock column")
+            except Exception as e:  # pragma: no cover - defensive
+                print("[DB][Warn] Could not add stock column:", e)
+        if 'reorder_level' not in existing_cols:
+            try:
+                conn.execute("ALTER TABLE drugs ADD COLUMN reorder_level INTEGER NOT NULL DEFAULT 0;")
+                print("[DB] Added drugs.reorder_level column")
+            except Exception as e:  # pragma: no cover
+                print("[DB][Warn] Could not add reorder_level column:", e)
     print("[DB] Schema ready ✔")
