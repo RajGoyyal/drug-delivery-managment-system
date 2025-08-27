@@ -24,7 +24,9 @@
   /* Removed glass effect */
       .card-hover { transition: all .45s cubic-bezier(.4,.2,.2,1); }
       .card-hover:hover { transform: translateY(-4px); box-shadow: 0 16px 40px -10px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,0.05) inset; }
-      .heading-gradient { background: linear-gradient(92deg,#fff 0%,#93c5fd 40%,#818cf8 60%,#c7d2fe 90%); -webkit-background-clip: text; background-clip:text; color:transparent; }
+  .heading-gradient { background: linear-gradient(92deg,#fff 0%,#93c5fd 40%,#818cf8 60%,#c7d2fe 90%); -webkit-background-clip: text; background-clip:text; color:transparent; }
+  :root { --font-display: 'Poppins','Inter','Segoe UI',system-ui,-apple-system,Roboto,'Helvetica Neue',Arial,sans-serif; }
+  .display-heading{ font-family: var(--font-display); font-weight:600; letter-spacing:-0.025em; }
       /* Refresh buttons subtle style */
       button[id^="refresh-"], #inv-refresh { 
         font-weight:500; /* medium */
@@ -49,58 +51,102 @@
       .soft-scroll::-webkit-scrollbar{width:10px;} .soft-scroll::-webkit-scrollbar-track{background:transparent;} .soft-scroll::-webkit-scrollbar-thumb{background:#475569;border-radius:6px;} .soft-scroll::-webkit-scrollbar-thumb:hover{background:#64748b;}
       /* Search dropdown layering */
       #global-search-results{z-index:100;}
-  /* ---- Light Theme (refined) ------------------------------------------- */
-  body.theme-light{ background:#f8fafc; color:#0f172a; font-feature-settings:"ss01" 1; }
-  body.theme-light ::selection{ background:#6366f1; color:#fff; }
-  body.theme-light #offline-banner{ background:#dc2626; }
-  /* Containers / surfaces */
+  /* ---- Light Theme (calm / low-flash redesign v2) ------------------------ */
+  body.theme-light{
+  /* Cooler, slightly darker bluish slate palette */
+  --c-bg:#e4e9f0;            /* main page background (darker than pure white) */
+  --c-bg-alt:#f1f4f8;        /* alt light surface */
+  --c-surface:#f6f8fb;       /* primary card surface */
+  --c-surface-alt:#d9e1ea;   /* hovered / subtle blocks */
+  --c-border:#cad3dd;        /* soft border */
+  --c-border-strong:#b5c0cc; /* stronger divider */
+  --c-text:#1f2b38;          /* main text */
+  --c-text-soft:#455366;     /* secondary */
+  --c-text-faint:#6b7a8c;    /* tertiary */
+  /* Muted cool accent */
+  --c-accent:#446ac4;        /* refined accent (slightly lighter, cleaner) */
+  --c-accent-hover:#3a5cb2;  /* hover a shade deeper */
+  --c-accent-soft:#dae5fa;   /* soft ring / subtle bg */
+  --c-accent-grad:linear-gradient(135deg,#5d84e2 0%, #446ac4 45%, #3456a8 100%);
+  --g-nav:linear-gradient(110deg,rgba(93,132,226,0.18),rgba(52,86,168,0.22) 55%,rgba(52,86,168,0.35));
+  --g-surface:linear-gradient(145deg,rgba(255,255,255,0.9),rgba(230,236,246,0.65));
+  --g-card:linear-gradient(135deg,rgba(255,255,255,0.85),rgba(215,224,235,0.55));
+  --g-focus:linear-gradient(135deg,#5d84e2,#3456a8);
+  --c-danger-soft:#f6dde0;   /* subtle danger bg */
+    --radius:14px;
+    background:var(--c-bg);
+    color:var(--c-text);
+    font-feature-settings:"ss01" 1;
+  }
+  body.theme-light ::selection{ background:var(--c-accent); color:#fff; }
+  body.theme-light #offline-banner{ background:#cf222e; }
+  /* Remove decorative radial backdrops for light */
+  body.theme-light::before, body.theme-light::after{ content:none; }
+  /* Generic surfaces */
   body.theme-light .bg-slate-800\/60,
   body.theme-light .bg-slate-800\/70,
   body.theme-light .bg-slate-800,
-  body.theme-light [data-view].bg-slate-800{ background:rgba(255,255,255,0.94)!important; backdrop-filter:saturate(160%) blur(14px); border-color:#e2e8f0!important; }
-  body.theme-light .border-slate-700, body.theme-light .border-slate-700\/60, body.theme-light .border-slate-700\/70{ border-color:#e2e8f0!important; }
-  /* Text tone (approx remap) */
-  body.theme-light .text-slate-100{ color:#0f172a!important; }
-  body.theme-light .text-slate-200{ color:#1e293b!important; }
-  body.theme-light .text-slate-300{ color:#334155!important; }
-  body.theme-light .text-slate-400{ color:#475569!important; }
-  body.theme-light .text-slate-500{ color:#64748b!important; }
-  body.theme-light .text-slate-600{ color:#64748b!important; }
-  body.theme-light .text-slate-700{ color:#475569!important; }
-  body.theme-light .text-slate-800{ color:#334155!important; }
+  body.theme-light [data-view].bg-slate-800{ background:var(--c-surface)!important; border:1px solid var(--c-border)!important; backdrop-filter:none; -webkit-backdrop-filter:none; }
+  body.theme-light .border-slate-700, body.theme-light .border-slate-700\/60, body.theme-light .border-slate-700\/70{ border-color:var(--c-border)!important; }
+  /* Text remap */
+  body.theme-light .text-slate-100, body.theme-light .text-slate-200{ color:var(--c-text)!important; }
+  body.theme-light .text-slate-300{ color:var(--c-text-soft)!important; }
+  body.theme-light .text-slate-400{ color:var(--c-text-soft)!important; }
+  body.theme-light .text-slate-500, body.theme-light .text-slate-600{ color:var(--c-text-faint)!important; }
   /* Nav */
-  body.theme-light #main-nav{ background:rgba(255,255,255,0.88); border:1px solid #e2e8f0; }
-  body.theme-light .tab-btn{ color:#475569; background:transparent; }
-  body.theme-light .tab-btn.bg-indigo-600{ background:linear-gradient(135deg,#6366f1,#4338ca)!important; color:#fff!important; box-shadow:0 2px 4px rgba(30,41,59,0.15); }
-  body.theme-light .tab-btn:not(.bg-indigo-600):hover{ background:#e2e8f0; color:#1e293b; }
-  /* Pills / buttons */
-  body.theme-light .bg-slate-700, body.theme-light .bg-slate-700\/60, body.theme-light .bg-slate-700\/70{ background:#e2e8f0!important; color:#334155; }
-  body.theme-light .bg-slate-600{ background:#cbd5e1!important; color:#334155; }
-  body.theme-light .hover\:bg-slate-600:hover{ background:#cbd5e1!important; }
-  body.theme-light .hover\:bg-slate-700:hover{ background:#e2e8f0!important; }
-  body.theme-light .border-slate-600{ border-color:#cbd5e1!important; }
+  body.theme-light #main-nav{ background:var(--g-nav); border:1px solid var(--c-border); box-shadow:0 2px 4px -2px rgba(0,0,0,0.08); backdrop-filter:blur(6px); }
+  body.theme-light .tab-btn{ color:var(--c-text-soft); background:transparent; border:1px solid transparent; }
+  body.theme-light .tab-btn.bg-indigo-600{ background:var(--c-accent)!important; background-image:var(--c-accent-grad)!important; color:#fff!important; box-shadow:0 3px 8px -3px rgba(0,0,0,0.25),0 0 0 1px rgba(255,255,255,0.15) inset; border-color:var(--c-accent-hover); }
+  /* Other primary accent buttons (seed, export, etc.) */
+  body.theme-light button.bg-indigo-600:not(.tab-btn){ background:var(--c-accent); background-image:var(--c-accent-grad); color:#fff; border:1px solid var(--c-accent-hover); box-shadow:0 2px 6px -2px rgba(0,0,0,0.25); transition:filter .25s, box-shadow .25s; }
+  body.theme-light button.bg-indigo-600:not(.tab-btn):hover{ filter:brightness(1.07); box-shadow:0 3px 10px -2px rgba(0,0,0,0.3); }
+  body.theme-light button.bg-indigo-600:not(.tab-btn):focus-visible{ outline:2px solid transparent; box-shadow:0 0 0 3px rgba(255,255,255,0.6),0 0 0 5px #446ac4; }
+  body.theme-light .tab-btn:not(.bg-indigo-600):hover{ background:var(--c-surface-alt); color:var(--c-text); }
+  /* Quiet buttons */
+  body.theme-light .bg-slate-700, body.theme-light .bg-slate-700\/60, body.theme-light .bg-slate-700\/70{ background:var(--c-surface-alt)!important; color:var(--c-text-soft); }
+  body.theme-light .bg-slate-600{ background:var(--c-surface-alt)!important; color:var(--c-text-soft); }
+  body.theme-light .hover\:bg-slate-600:hover{ background:var(--c-surface-alt)!important; }
+  body.theme-light .hover\:bg-slate-700:hover{ background:var(--c-surface-alt)!important; }
+  body.theme-light .border-slate-600{ border-color:var(--c-border)!important; }
   /* Cards */
-  body.theme-light .card-hover{ transition:box-shadow .25s, transform .25s; }
-  body.theme-light .card-hover:hover{ box-shadow:0 6px 18px -5px rgba(30,41,59,0.15),0 2px 4px rgba(30,41,59,0.08); transform:translateY(-2px); }
+  body.theme-light .card-hover{ position:relative; background:var(--g-card); transition:box-shadow .3s, transform .3s; border-radius:var(--radius); }
+  body.theme-light .card-hover::before{ content:""; position:absolute; inset:0; background:linear-gradient(160deg,rgba(255,255,255,0.35),rgba(255,255,255,0)); pointer-events:none; border-radius:inherit; }
+  body.theme-light .card-hover:hover{ box-shadow:0 4px 14px -4px rgba(52,86,168,0.25),0 2px 6px -2px rgba(0,0,0,0.12); transform:translateY(-2px); }
   /* Tables */
-  body.theme-light table thead{ background:linear-gradient(180deg,#f1f5f9,#e2e8f0); }
-  body.theme-light table tbody tr:nth-child(even){ background:#f1f5f9; }
-  body.theme-light table tbody tr:hover{ background:#e2e8f0; }
-  body.theme-light th{ color:#334155; }
+  body.theme-light table thead{ background:var(--c-bg-alt); }
+  body.theme-light table tbody tr:nth-child(even){ background:var(--c-bg); }
+  body.theme-light table tbody tr:hover{ background:var(--c-surface-alt); }
+  body.theme-light th{ color:var(--c-text-soft); font-weight:600; }
   /* Inputs */
-  body.theme-light input, body.theme-light textarea, body.theme-light select{ background:#ffffff!important; border-color:#cbd5e1!important; color:#0f172a!important; }
-  body.theme-light input:focus, body.theme-light textarea:focus, body.theme-light select:focus{ outline:2px solid #6366f1; outline-offset:1px; }
+  body.theme-light input, body.theme-light textarea, body.theme-light select{ background:var(--c-bg-alt)!important; border:1px solid var(--c-border)!important; color:var(--c-text)!important; box-shadow:none; }
+  body.theme-light input:focus, body.theme-light textarea:focus, body.theme-light select:focus{ outline:2px solid var(--c-accent-soft); outline-offset:2px; border-color:var(--c-accent-hover)!important; box-shadow:0 0 0 2px rgba(62,95,167,0.15); }
   /* Scrollbars */
-  body.theme-light .soft-scroll::-webkit-scrollbar-thumb{ background:#cbd5e1; }
-  body.theme-light .soft-scroll::-webkit-scrollbar-thumb:hover{ background:#94a3b8; }
-  /* Heading gradient */
-  body.theme-light .heading-gradient{ background:linear-gradient(90deg,#4338ca,#6366f1,#0ea5e9); -webkit-background-clip:text; color:transparent; }
-  /* Toast */
-  body.theme-light #toast-wrap .bg-white{ background:#ffffff!important; }
+  body.theme-light .soft-scroll::-webkit-scrollbar-thumb{ background:var(--c-border-strong); }
+  body.theme-light .soft-scroll::-webkit-scrollbar-thumb:hover{ background:var(--c-text-faint); }
+  /* Force section panels that still carry dark utility classes to light surfaces */
+  body.theme-light [data-view="deliveries"],
+  body.theme-light [data-view="inventory"],
+  body.theme-light [data-view="patients"],
+  body.theme-light [data-view="deliveries"],
+  body.theme-light [data-view="inventory"],
+  body.theme-light [data-view="patients"],
+  body.theme-light [data-view="all-deliveries"],
+  body.theme-light [data-view="analytics"],
+  body.theme-light [data-view="alerts"],
+  body.theme-light [data-view="history"],
+  body.theme-light [data-view="calendar"],
+  body.theme-light [data-view="insights"]{
+    background:var(--g-surface)!important;
+    border-color:var(--c-border)!important;
+    box-shadow:0 1px 3px rgba(0,0,0,0.05),0 0 0 1px rgba(255,255,255,0.4) inset;
+  }
+  body.theme-light #toast-wrap .bg-white{ background:var(--c-bg-alt)!important; border:1px solid var(--c-border); }
   /* Low stock badge */
-  body.theme-light #nav-low-stock{ background:#fee2e2!important; color:#b91c1c!important; border-color:#fecaca!important; }
-  /* Dark-only accents hide in light */
-  body.theme-light .dark\:text-slate-300{ color:#475569!important; }
+  body.theme-light #nav-low-stock{ background:var(--c-danger-soft)!important; color:#9f2f2f!important; border-color:#edcaca!important; }
+  /* Section separators subtle */
+  body.theme-light [data-view] hr, body.theme-light .divide-y > * + *{ border-color:var(--c-border); }
+  /* Dark-only accent fallback */
+  body.theme-light .dark\:text-slate-300{ color:var(--c-text-faint)!important; }
     </style>
   </head>
   <body class="min-h-screen bg-slate-900 text-slate-100 transition-colors">
@@ -140,9 +186,7 @@
   <!-- Filler utility area -->
   <div id="nav-utilities" class="hidden md:flex items-center gap-2 pl-2 pr-1">
     <div id="nav-quick-stats" class="hidden lg:flex items-center gap-1 text-[10px] font-medium tracking-wide text-slate-400">
-      <span class="px-2 py-1 rounded-full bg-slate-700/60 border border-slate-600" data-nav-mini="patients" title="Patients">P:<span class="ml-0.5" data-count="patients"></span></span>
-      <span class="px-2 py-1 rounded-full bg-slate-700/60 border border-slate-600" data-nav-mini="drugs" title="Drugs">D:<span class="ml-0.5" data-count="drugs"></span></span>
-      <span class="px-2 py-1 rounded-full bg-slate-700/60 border border-slate-600" data-nav-mini="deliveries" title="Deliveries">DL:<span class="ml-0.5" data-count="deliveries"></span></span>
+  <!-- Mini stat badges removed per request -->
     </div>
     <button id="nav-low-stock" class="hidden text-[10px] px-2 py-1 rounded-full bg-rose-600/20 text-rose-300 border border-rose-500/40" title="Low stock items">Low: <span id="nav-low-stock-count">0</span></button>
     <button id="theme-toggle" class="px-2 py-1 rounded-full bg-slate-700/70 hover:bg-slate-600 text-[11px] border border-slate-600" title="Toggle light/dark">☀️</button>
@@ -153,7 +197,7 @@
   <div class="relative overflow-hidden rounded-2xl bg-slate-800/70 p-10 card-hover border border-slate-700">
           <div class="absolute inset-0 opacity-[0.15] pointer-events-none" style="background-image: radial-gradient(circle at 25% 15%, #6366f1 0, transparent 60%), radial-gradient(circle at 75% 85%, #0ea5e9 0, transparent 55%);"></div>
           <div class="relative space-y-4">
-  <h2 class="text-3xl font-semibold tracking-tight heading-gradient flex items-center gap-3">Welcome back 👋 <button id="refresh-dashboard" class="text-xs px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button></h2>
+  <h2 class="text-3xl display-heading tracking-tight heading-gradient flex items-center gap-3">Welcome back 👋 <button id="refresh-dashboard" class="text-xs px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button></h2>
       <p class="text-sm text-slate-300/80 leading-relaxed max-w-prose">Monitor medication logistics, track adherence, and keep patient therapy on schedule. Use quick stats & distribution to spot issues early.</p>
             <div class="flex flex-wrap gap-2">
               <button id="seed-btn" class="text-xs px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-2 disabled:opacity-50" title="Insert demo data">Seed Demo Data</button>
@@ -183,7 +227,7 @@
       <!-- Patients View (merged overview + add form) -->
   <section data-view="patients" class="bg-slate-800 border border-slate-700 rounded-lg shadow p-5 space-y-6 hidden">
     <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-      <h2 class="text-lg font-semibold heading-gradient flex items-center gap-3">Patients <button id="refresh-patients" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button></h2>
+  <h2 class="text-lg display-heading heading-gradient flex items-center gap-3">Patients <button id="refresh-patients" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button></h2>
       <div class="flex items-center gap-2 ml-auto">
         <input id="all-patients-search" placeholder="Search" class="bg-slate-900/40 border border-slate-600 rounded px-2 py-1 text-xs placeholder-slate-500" />
         <button id="export-all-patients" class="text-[10px] px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Export All</button>
@@ -427,7 +471,7 @@
       <!-- All Deliveries Overview -->
   <section data-view="all-deliveries" class="rounded-xl p-6 space-y-4 hidden bg-slate-800/70 border border-slate-700">
         <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-          <h2 class="text-lg font-semibold heading-gradient flex items-center gap-3">All Deliveries <button id="refresh-all-deliveries" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button></h2>
+          <h2 class="text-lg display-heading heading-gradient flex items-center gap-3">All Deliveries <button id="refresh-all-deliveries" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button></h2>
           <div class="flex items-center gap-2 ml-auto">
             <input id="all-deliveries-search" placeholder="Search (id / status / notes)" class="bg-slate-900/40 border border-slate-600 rounded px-2 py-1 text-xs placeholder-slate-500" />
             <button id="export-all-deliveries" class="text-[10px] px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Export All</button>
