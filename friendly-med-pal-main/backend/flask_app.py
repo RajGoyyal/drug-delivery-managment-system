@@ -251,6 +251,32 @@ def stats():
 def health():
     return jsonify({'status':'ok','time': datetime.now(timezone.utc).isoformat()})
 
+# --- AI placeholder --------------------------------------------------------
+@app.route('/api/ai/answer', methods=['GET','POST'])
+def ai_answer():
+    """Lightweight placeholder so frontend calls don't 500. Accepts GET ?q= or POST {question}."""
+    try:
+        q = request.args.get('q')
+        if not q and request.is_json:
+            body = request.get_json(silent=True) or {}
+            q = body.get('question') or body.get('q')
+        if not q:
+            return jsonify({'answer': None, 'detail': 'no question provided'}), 400
+        # Simple echo / stub answer. (Real model integration can be added later.)
+        return jsonify({'answer': f"(stub) You asked: {q}", 'question': q, 'model': 'disabled'}), 200
+    except Exception as e:
+        return jsonify({'detail': 'ai error', 'error': str(e)}), 500
+
+# --- Favicon ---------------------------------------------------------------
+@app.get('/favicon.ico')
+def favicon():
+    pub = APP_ROOT / 'public'
+    icon = pub / 'favicon.ico'
+    if icon.exists():
+        return send_from_directory(str(pub), 'favicon.ico')
+    # Graceful empty 204 instead of raising 404 stack trace in debug
+    return ('', 204)
+
 # --- SPA index passthrough --------------------------------------------------
 @app.get('/')
 def root():

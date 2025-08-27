@@ -71,9 +71,8 @@
         </div>
       </header>
   <nav id="main-nav" class="sticky-nav nav-scroll flex gap-1 text-sm mt-2 p-1 rounded-full bg-slate-800/60 backdrop-blur border border-slate-700/70 relative">
-        <button data-tab="dashboard" class="tab-btn pill-btn px-4 rounded-full bg-indigo-600 text-white shadow-inner whitespace-nowrap">Dashboard</button>
-        <button data-tab="all-patients" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">All Patients <span class="text-[10px] ml-1 opacity-60" data-count="patients"></span></button>
-        <button data-tab="patients" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Add Patient</button>
+  <button data-tab="dashboard" class="tab-btn pill-btn px-4 rounded-full bg-indigo-600 text-white shadow-inner whitespace-nowrap">Dashboard</button>
+  <button data-tab="patients" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Patients <span class="text-[10px] ml-1 opacity-60" data-count="patients"></span></button>
   <!-- Removed All Drugs tab (overview merged into Inventory) -->
   <!-- Merged Add Drug into Inventory: removed separate Add Drug tab -->
         <button data-tab="all-deliveries" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">All Deliveries <span class="text-[10px] ml-1 opacity-60" data-count="deliveries"></span></button>
@@ -118,20 +117,52 @@
         </div>
       </section>
 
-      <!-- Patients View -->
-  <section data-view="patients" class="bg-slate-800 border border-slate-700 rounded-lg shadow p-5 space-y-4 hidden">
-  <h2 class="font-semibold flex items-center gap-2">Patients <input id="patient-filter" placeholder="Filter" class="ml-3 flex-1 max-w-[160px] text-xs border border-slate-600 rounded px-2 py-1 bg-slate-700 placeholder-slate-400 text-slate-100" /><button id="refresh-patients" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button><button id="export-patients" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600 ml-auto">Export</button></h2>
-          <form id="patient-form" class="grid gap-3 text-sm">
-            <input name="name" required placeholder="Name" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
-            <input name="age" type="number" min="0" placeholder="Age" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
-            <input name="condition" placeholder="Condition" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
-            <div class="flex items-center gap-3">
-              <button class="bg-indigo-600 hover:bg-indigo-500 text-white rounded px-4 py-2 font-medium disabled:opacity-50 flex items-center gap-2" id="patient-submit"><span>Add Patient</span><span class="hidden spinner" id="patient-spinner"></span></button>
-              <p class="text-xs text-red-500" id="patient-error"></p>
-            </div>
-          </form>
-    <ul id="patient-list" class="text-xs space-y-1 max-h-48 overflow-auto divide-y divide-slate-100"></ul>
-      </section>
+      <!-- Patients View (merged overview + add form) -->
+  <section data-view="patients" class="bg-slate-800 border border-slate-700 rounded-lg shadow p-5 space-y-6 hidden">
+    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+      <h2 class="text-lg font-semibold heading-gradient flex items-center gap-3">Patients <button id="refresh-patients" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button></h2>
+      <div class="flex items-center gap-2 ml-auto">
+        <input id="all-patients-search" placeholder="Search" class="bg-slate-900/40 border border-slate-600 rounded px-2 py-1 text-xs placeholder-slate-500" />
+        <button id="export-all-patients" class="text-[10px] px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Export All</button>
+        <button id="export-all-patients-filtered" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-200">Export Filtered</button>
+        <select id="all-patients-pagesize" class="bg-slate-900/40 border border-slate-600 rounded px-2 py-1 text-[10px]">
+          <option>25</option><option>50</option><option>100</option>
+        </select>
+      </div>
+    </div>
+    <details open class="rounded border border-slate-700/70 bg-slate-900/30 p-4">
+      <summary class="cursor-pointer text-sm font-medium mb-2">Add Patient</summary>
+      <form id="patient-form" class="grid gap-3 text-sm mt-2">
+        <input name="name" required placeholder="Name" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
+        <input name="age" type="number" min="0" placeholder="Age" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
+        <input name="condition" placeholder="Condition" class="border border-slate-600 rounded px-3 py-2 bg-slate-700 placeholder-slate-400 text-slate-100" />
+        <div class="flex items-center gap-3">
+          <button class="bg-indigo-600 hover:bg-indigo-500 text-white rounded px-4 py-2 font-medium disabled:opacity-50 flex items-center gap-2" id="patient-submit"><span>Add Patient</span><span class="hidden spinner" id="patient-spinner"></span></button>
+          <p class="text-xs text-red-500" id="patient-error"></p>
+        </div>
+      </form>
+    </details>
+    <div class="overflow-auto soft-scroll max-h-[60vh] rounded-lg border border-slate-700/70">
+      <table class="w-full text-left text-xs" id="tbl-all-patients">
+        <thead class="bg-slate-800/60 sticky top-0 backdrop-blur select-none">
+          <tr class="text-slate-400">
+            <th data-sort="id" class="py-2 px-3 font-medium cursor-pointer">ID</th>
+            <th data-sort="name" class="py-2 px-3 font-medium cursor-pointer">Name</th>
+            <th data-sort="age" class="py-2 px-3 font-medium cursor-pointer">Age</th>
+            <th data-sort="condition" class="py-2 px-3 font-medium cursor-pointer">Condition</th>
+            <th data-sort="contact" class="py-2 px-3 font-medium cursor-pointer">Contact</th>
+          </tr>
+        </thead>
+        <tbody id="all-patients-body" class="divide-y divide-slate-800"></tbody>
+      </table>
+    </div>
+    <div class="flex items-center justify-between text-[10px] mt-1">
+      <div id="all-patients-info" class="text-slate-400"></div>
+      <div class="flex gap-1" id="all-patients-pager"></div>
+    </div>
+    <div id="all-patients-empty" class="text-[11px] text-slate-500"></div>
+    <ul id="patient-list" class="hidden"></ul>
+  </section>
 
   <!-- (Removed separate Drugs View: merged into Inventory section) -->
 
@@ -326,39 +357,7 @@
         </div>
       </section>
 
-      <!-- All Patients Overview -->
-  <section data-view="all-patients" class="rounded-xl p-6 space-y-4 hidden bg-slate-800/70 border border-slate-700">
-        <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-          <h2 class="text-lg font-semibold heading-gradient flex items-center gap-3">All Patients <button id="refresh-all-patients" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Refresh</button></h2>
-          <div class="flex items-center gap-2 ml-auto">
-            <input id="all-patients-search" placeholder="Search" class="bg-slate-900/40 border border-slate-600 rounded px-2 py-1 text-xs placeholder-slate-500" />
-            <button id="export-all-patients" class="text-[10px] px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Export All</button>
-            <button id="export-all-patients-filtered" class="text-[10px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-200">Export Filtered</button>
-            <select id="all-patients-pagesize" class="bg-slate-900/40 border border-slate-600 rounded px-2 py-1 text-[10px]">
-              <option>25</option><option>50</option><option>100</option>
-            </select>
-          </div>
-        </div>
-        <div class="overflow-auto soft-scroll max-h-[60vh] rounded-lg border border-slate-700/70">
-          <table class="w-full text-left text-xs" id="tbl-all-patients">
-            <thead class="bg-slate-800/60 sticky top-0 backdrop-blur select-none">
-              <tr class="text-slate-400">
-                <th data-sort="id" class="py-2 px-3 font-medium cursor-pointer">ID</th>
-                <th data-sort="name" class="py-2 px-3 font-medium cursor-pointer">Name</th>
-                <th data-sort="age" class="py-2 px-3 font-medium cursor-pointer">Age</th>
-                <th data-sort="condition" class="py-2 px-3 font-medium cursor-pointer">Condition</th>
-                <th data-sort="contact" class="py-2 px-3 font-medium cursor-pointer">Contact</th>
-              </tr>
-            </thead>
-            <tbody id="all-patients-body" class="divide-y divide-slate-800"></tbody>
-          </table>
-        </div>
-        <div class="flex items-center justify-between text-[10px] mt-1">
-          <div id="all-patients-info" class="text-slate-400"></div>
-          <div class="flex gap-1" id="all-patients-pager"></div>
-        </div>
-        <div id="all-patients-empty" class="text-[11px] text-slate-500"></div>
-      </section>
+  <!-- (All Patients Overview merged into Patients section above) -->
 
   <!-- (Removed standalone All Drugs section: now embedded in Inventory) -->
 
@@ -1257,9 +1256,15 @@
         }
       }
 
-  function filterPatients(){ const term=(document.getElementById('patient-filter').value||'').toLowerCase(); if(!window.__patients){ return []; } return window.__patients.filter(p=> p.name.toLowerCase().includes(term) || (p.condition||'').toLowerCase().includes(term)); }
+  function filterPatients(){
+    const el=document.getElementById('patient-filter') || document.getElementById('all-patients-search');
+    const term=(el && el.value ? el.value : '').toLowerCase();
+    if(!window.__patients){ return []; }
+    if(!term) return window.__patients.slice();
+    return window.__patients.filter(p=> p.name.toLowerCase().includes(term) || (p.condition||'').toLowerCase().includes(term));
+  }
   function filterDrugs(){ const term=(document.getElementById('drug-filter').value||'').toLowerCase(); if(!window.__drugs){ return []; } return window.__drugs.filter(d=> d.name.toLowerCase().includes(term) || (d.dosage||'').toLowerCase().includes(term)); }
-    document.getElementById('patient-filter').addEventListener('input', ()=> refreshPatients());
+  const pfEl=document.getElementById('patient-filter'); if(pfEl){ pfEl.addEventListener('input', ()=> refreshPatients()); }
     document.getElementById('drug-filter').addEventListener('input', ()=> refreshDrugs());
     const themeBtn=document.getElementById('theme-toggle');
   // Dark theme removed; placeholder functions retained for other prefs.
@@ -1458,9 +1463,26 @@
     document.getElementById('history-search').addEventListener('input', renderHistory);
     document.getElementById('history-refresh').addEventListener('click', (e)=>{ e.preventDefault(); refreshDeliveries(); });
 
+    // --- Overview table state (moved earlier to avoid TDZ in early tab activation) ---
+    const overviewState={
+      patients:{sortKey:'id',sortDir:'asc',page:1,pageSize:25,search:''},
+      drugs:{sortKey:'id',sortDir:'asc',page:1,pageSize:25,search:''},
+      deliveries:{sortKey:'id',sortDir:'asc',page:1,pageSize:25,search:'',dateFrom:'',dateTo:'',selected:new Set(),visibleCols:{patient:true,drug:true,scheduled_for:true,status:true,notes:true}}
+    };
+    function debounce(fn,ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
+    function applySort(rows,key,dir){ return rows.sort((a,b)=>{ const av=a[key]??''; const bv=b[key]??''; if(av<bv) return dir==='asc'? -1:1; if(av>bv) return dir==='asc'? 1:-1; return 0; }); }
+    function slicePage(rows,page,pageSize){ const start=(page-1)*pageSize; return rows.slice(start,start+pageSize); }
+    function pager(total,page,pageSize,el,prefix,renderFn){ el.innerHTML=''; const pages=Math.max(1,Math.ceil(total/pageSize)); if(page>pages){ page=pages; } overviewState[prefix].page=page; if(pages<=1) return; const mk=(p,l)=>{ const b=document.createElement('button'); b.textContent=l; b.className='px-2 py-0.5 rounded border text-[10px] '+(p===page?'bg-indigo-600 border-indigo-600 text-white':'border-slate-600 hover:bg-slate-700'); b.onclick=()=>{ overviewState[prefix].page=p; renderFn(); }; return b; }; el.append(mk(Math.max(1,page-1),'‹')); for(let p=1;p<=pages && p<=6;p++){ if(p===6 && pages>6){ const more=document.createElement('span'); more.textContent='…'; more.className='px-1 text-slate-500'; el.append(more); el.append(mk(pages,pages)); break; } el.append(mk(p,p)); } el.append(mk(Math.min(pages,page+1),'›')); }
+    function updateCounts(){ ['patients','drugs','deliveries'].forEach(k=>{ const span=document.querySelector(`[data-count=${k}]`); if(span){ const data=window['__'+k]||[]; span.textContent=data.length; } }); }
+    function sortIndicator(th,active,dir){ th.querySelectorAll('.sort-ind').forEach(e=>e.remove()); const span=document.createElement('span'); span.className='sort-ind ml-1 opacity-60'; if(active){ span.textContent= dir==='asc'? '▲':'▼'; } th.append(span); }
+    function renderAllPatients(){ const body=document.getElementById('all-patients-body'); if(!body) return; const empty=document.getElementById('all-patients-empty'); const info=document.getElementById('all-patients-info'); const pagerEl=document.getElementById('all-patients-pager'); const st=overviewState.patients; st.pageSize=Number(document.getElementById('all-patients-pagesize').value)||25; st.search=(document.getElementById('all-patients-search').value||'').toLowerCase(); let rows=(window.__patients||[]).filter(p=> !st.search || p.name.toLowerCase().includes(st.search) || (p.condition||'').toLowerCase().includes(st.search) || String(p.id)===st.search); rows=applySort(rows, st.sortKey, st.sortDir); const total=rows.length; rows=slicePage(rows, st.page, st.pageSize); body.innerHTML=rows.map(p=>`<tr class='hover:bg-slate-700/40 transition'><td class='px-3 py-2 font-medium text-slate-300'>${p.id}</td><td class='px-3 py-2'>${escapeHTML(p.name)}</td><td class='px-3 py-2 text-slate-400'>${p.age??'—'}</td><td class='px-3 py-2 text-slate-400'>${p.condition? escapeHTML(p.condition):'—'}</td><td class='px-3 py-2 text-slate-400'>${p.contact? escapeHTML(p.contact):'—'}</td></tr>`).join(''); empty.textContent= total? '' : 'No patients found'; info.textContent= total? `Showing ${(st.page-1)*st.pageSize+1}-${Math.min(total, st.page*st.pageSize)} of ${total}` : ''; pager(total, st.page, st.pageSize, pagerEl, 'patients', renderAllPatients); updateCounts(); document.querySelectorAll('#tbl-all-patients thead th').forEach(th=> sortIndicator(th, th.dataset.sort===st.sortKey, st.sortDir)); }
+    function renderAllDeliveries(){ const body=document.getElementById('all-deliveries-body'); if(!body) return; const empty=document.getElementById('all-deliveries-empty'); const info=document.getElementById('all-deliveries-info'); const pagerEl=document.getElementById('all-deliveries-pager'); const st=overviewState.deliveries; st.pageSize=Number(document.getElementById('all-deliveries-pagesize')?.value)||25; st.search=(document.getElementById('all-deliveries-search')?.value||'').toLowerCase(); st.dateFrom=document.getElementById('deliveries-date-from')?.value||''; st.dateTo=document.getElementById('deliveries-date-to')?.value||''; const patientMap=new Map((window.__patients||[]).map(p=>[p.id,p])); const drugMap=new Map((window.__drugs||[]).map(d=>[d.id,d])); let rows=(window.__deliveries||[]).map(d=> ({...d,_patient:patientMap.get(d.patient_id), _drug:drugMap.get(d.drug_id)})); if(st.search){ rows=rows.filter(d=> String(d.id)===st.search || d.status.toLowerCase().includes(st.search) || (d.notes||'').toLowerCase().includes(st.search) || (d._patient && d._patient.name.toLowerCase().includes(st.search)) || (d._drug && d._drug.name.toLowerCase().includes(st.search)) ); } if(st.dateFrom){ rows=rows.filter(r=> r.scheduled_for && r.scheduled_for.substring(0,10)>=st.dateFrom); } if(st.dateTo){ rows=rows.filter(r=> r.scheduled_for && r.scheduled_for.substring(0,10)<=st.dateTo); } rows=applySort(rows, st.sortKey, st.sortDir); const total=rows.length; rows=slicePage(rows, st.page, st.pageSize); body.innerHTML=rows.map(d=>{ const sel= st.selected.has(d.id); const when=d.scheduled_for? new Date(d.scheduled_for): null; let rel=''; if(when){ const diff= Date.now()- when.getTime(); const mins=Math.round(diff/60000); if(Math.abs(mins)<60){ rel=`${mins>0?mins+'m ago':'in '+(-mins)+'m'}`;} else { const hrs=Math.round(mins/60); if(Math.abs(hrs)<24){ rel=`${hrs>0?hrs+'h ago':'in '+(-hrs)+'h'}`;} else { const days=Math.round(hrs/24); rel=`${days>0?days+'d ago':'in '+(-days)+'d'}`; } } } return `<tr class='hover:bg-slate-700/40 transition'><td class='px-3 py-2 font-medium text-slate-300'>${d.id}</td><td class='px-3 py-2 text-slate-400'>${d.quantity||1}</td><td class='px-3 py-2 text-slate-400'>${d._patient? escapeHTML(d._patient.name):'#'+d.patient_id}</td><td class='px-3 py-2 text-slate-400'>${d._drug? escapeHTML(d._drug.name):'#'+d.drug_id}</td><td class='px-3 py-2 text-slate-400 whitespace-nowrap'>${d.scheduled_for||'—'}${rel?`<div class='text-[10px] text-slate-500'>${rel}</div>`:''}</td><td class='px-3 py-2'>${statusBadge(d.status)}</td><td class='px-3 py-2 text-slate-400 max-w-[200px] truncate' title='${d.notes? escapeHTML(d.notes):''}'>${d.notes? escapeHTML(d.notes):'—'}</td></tr>`; }).join(''); empty.textContent= total? '' : 'No deliveries found'; const qtySum=rows.reduce((a,r)=> a+(r.quantity||1),0); info.textContent= total? `Showing ${(st.page-1)*st.pageSize+1}-${Math.min(total, st.page*st.pageSize)} of ${total} • Page Qty Total: ${qtySum}` : ''; pager(total, st.page, st.pageSize, pagerEl, 'deliveries', renderAllDeliveries); updateCounts(); document.querySelectorAll('#tbl-all-deliveries thead th').forEach(th=> sortIndicator(th, th.dataset.sort===st.sortKey, st.sortDir)); }
+    // End moved overview block
+
     // Tabs
     const tabButtons = document.querySelectorAll('#main-nav .tab-btn');
     function activateTab(name){
+      if(name==='all-patients') name='patients';
       document.querySelectorAll('[data-view]').forEach(v=>{
         const show = v.getAttribute('data-view')===name;
         v.classList.toggle('hidden', !show);
@@ -1478,233 +1500,16 @@
       });
       savePref('activeTab', name);
   // Indicator removed; simplified active state only
-  if(name==='all-patients') renderAllPatients();
-  else if(name==='all-deliveries') renderAllDeliveries();
-  else if(name==='inventory') {
-    const addPanel=document.getElementById('inv-add-drug-panel');
-    if(addPanel && !addPanel.hasAttribute('data-opened-once')){ addPanel.open=true; addPanel.setAttribute('data-opened-once','1'); }
-  }
+  if(name==='patients') renderAllPatients();
     }
-    tabButtons.forEach(b=> b.addEventListener('click', ()=> activateTab(b.getAttribute('data-tab'))));
-      document.getElementById('seed-btn').addEventListener('click', async ()=>{
-        if(!confirmAction('Insert demo data? This may duplicate existing records.')) return;
-        const btn=document.getElementById('seed-btn'); btn.disabled=true; btn.textContent='Seeding...';
-        setLoading(true,'Seeding demo data');
-        try { await call('/api/seed', {method:'POST'}); toast('Seed complete','success'); logActivity('Seed data inserted'); await Promise.all([refreshPatients(), refreshDrugs(), refreshDeliveries(), loadStats()]); }
-  catch(e){ console.error('Seed failed', e); toast('Seed failed','error'); }
-        finally { setLoading(false); btn.disabled=false; btn.textContent='Seed Demo Data'; }
-      });
-      // CSV Export helpers
-  function toCSV(rows){ if(!rows.length){ return ''; } const headers=Object.keys(rows[0]); const esc=v=> '"'+String(v??'').replace(/"/g,'""')+'"'; return [headers.join(','), ...rows.map(r=>headers.map(h=>esc(r[h])).join(','))].join('\n'); }
-  function downloadFile(name, content){ const blob=new Blob([content],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
-  document.getElementById('export-patients').addEventListener('click', ()=>{ if(!window.__patients){ toast('No data','error'); return; } downloadFile('patients.csv', toCSV(window.__patients)); });
-  document.getElementById('export-drugs').addEventListener('click', ()=>{ if(!window.__drugs){ toast('No data','error'); return; } downloadFile('drugs.csv', toCSV(window.__drugs)); });
-  // Inventory quick add drug jump
-  const addDrugJump=document.getElementById('inv-add-drug-jump');
-  if(addDrugJump){ addDrugJump.addEventListener('click', ()=>{ activateTab('inventory'); const p=document.getElementById('inv-add-drug-panel'); if(p){ p.open=true; p.scrollIntoView({behavior:'smooth', block:'start'}); } }); }
-  document.getElementById('export-deliveries').addEventListener('click', ()=>{ if(!window.__deliveries){ toast('No data','error'); return; } downloadFile('deliveries.csv', toCSV(window.__deliveries)); });
-  document.getElementById('toggle-overdue').addEventListener('click', (e)=>{ overdueOnly=!overdueOnly; e.target.classList.toggle('bg-red-600/40', overdueOnly); e.target.classList.toggle('text-red-300', overdueOnly); refreshDeliveries(); });
-  document.getElementById('export-all').addEventListener('click', ()=>{ const parts=[]; if(window.__patients){ parts.push({name:'patients', rows:window.__patients}); } if(window.__drugs){ parts.push({name:'drugs', rows:window.__drugs}); } if(window.__deliveries){ parts.push({name:'deliveries', rows:window.__deliveries}); } if(!parts.length){ toast('No data','error'); return; } parts.forEach(p=> downloadFile(p.name+'.csv', toCSV(p.rows))); });
-      // Global search
-      const gs=document.getElementById('global-search'); const gsBox=document.getElementById('global-search-results');
-  // Patient & Drug picker logic
-      function togglePanel(id){
-        const p=document.getElementById(id);
-        if(!p){ return; }
-        const show=p.classList.contains('hidden');
-        closePanels();
-        if(show){ p.classList.remove('hidden'); }
+    // Tab button click handling (event delegation so later overrides of activateTab still apply)
+    document.addEventListener('click', e=>{
+      const btn = e.target.closest && e.target.closest('.tab-btn');
+      if(btn && btn.hasAttribute('data-tab')){
+        const tab = btn.getAttribute('data-tab');
+        if(tab){ activateTab(tab); }
       }
-  function closePanels(){ ['patient-picker-panel','drug-picker-panel'].forEach(i=>{ const el=document.getElementById(i); if(el) el.classList.add('hidden'); }); }
-      document.addEventListener('click', e=>{
-        if(e.target.id==='patient-picker-btn'){
-          togglePanel('patient-picker-panel');
-        } else if(e.target.id==='drug-picker-btn'){
-          togglePanel('drug-picker-panel');
-        } else {
-          if(!e.target.closest('#patient-picker-panel') && !e.target.closest('#patient-picker-btn')){
-            const p=document.getElementById('patient-picker-panel');
-            if(p){ p.classList.add('hidden'); }
-          }
-          if(!e.target.closest('#drug-picker-panel') && !e.target.closest('#drug-picker-btn')){
-            const p2=document.getElementById('drug-picker-panel');
-            if(p2){ p2.classList.add('hidden'); }
-          }
-        }
-      });
-  document.addEventListener('input', e=>{ if(e.target.id==='patient-picker-search'){ refreshPatients(); } if(e.target.id==='drug-picker-search'){ refreshDrugs(); } });
-  document.addEventListener('click', e=>{ const btn=e.target.closest('button[data-pick-patient]'); if(btn){ const id=Number(btn.getAttribute('data-pick-patient')); const hidden=document.querySelector('input[name=patient_id]'); hidden.value=id; document.getElementById('patient-picker-current').textContent='#'+id; closePanels(); } });
-  document.addEventListener('click', e=>{ const btn=e.target.closest('button[data-pick-drug]'); if(btn){ const id=Number(btn.getAttribute('data-pick-drug')); const hidden=document.querySelector('input[name=drug_id]'); hidden.value=id; document.getElementById('drug-picker-current').textContent='#'+id; closePanels(); } });
-      if(gs){
-        gs.addEventListener('input', ()=>{
-          const q=gs.value.trim().toLowerCase();
-          if(!q){ gsBox.classList.add('hidden'); gsBox.innerHTML=''; return; }
-          const results=[];
-          (window.__patients||[]).forEach(p=>{ if(p.name.toLowerCase().includes(q) || String(p.id)===q) results.push({type:'Patient', id:p.id, label:p.name}); });
-          (window.__drugs||[]).forEach(d=>{ if(d.name.toLowerCase().includes(q) || String(d.id)===q) results.push({type:'Drug', id:d.id, label:d.name}); });
-          (window.__deliveries||[]).forEach(dv=>{ if(String(dv.id)===q || dv.status.toLowerCase().includes(q)) results.push({type:'Delivery', id:dv.id, label:dv.status+' #'+dv.id}); });
-          if(!results.length){ gsBox.innerHTML='<div class="p-3 text-[11px] text-slate-500">No matches</div>'; gsBox.classList.remove('hidden'); return; }
-          gsBox.innerHTML=results.slice(0,40).map(r=>`<button data-gs-type='${r.type}' data-gs-id='${r.id}' class='w-full text-left px-3 py-2 hover:bg-slate-700 flex items-center gap-2'><span class='text-[10px] px-1.5 py-0.5 rounded bg-slate-700 border border-slate-600'>${r.type[0]}</span><span class='flex-1 truncate'>${r.label}</span><span class='text-slate-500 text-[10px]'>#${r.id}</span></button>`).join('');
-          gsBox.classList.remove('hidden');
-        });
-        gsBox.addEventListener('click', e=>{
-          const btn = e.target.closest('button[data-gs-type]');
-          if(!btn){
-            return;
-          }
-          const t = btn.getAttribute('data-gs-type');
-          if(t==='Patient'){
-            activateTab('patients');
-          } else if(t==='Drug'){
-            activateTab('drugs');
-          } else if(t==='Delivery'){
-            activateTab('deliveries');
-          }
-          gsBox.classList.add('hidden');
-          gs.value='';
-        });
-        document.addEventListener('click', e=>{ if(!gs.contains(e.target) && !gsBox.contains(e.target)) gsBox.classList.add('hidden'); });
-      }
-      // Patient modal logic
-      function openPatientModal(id){
-        const modal=document.getElementById('patient-modal'); const body=document.getElementById('pm-body'); const title=document.getElementById('pm-title');
-        const p=(window.__patients||[]).find(x=>x.id===id); if(!p){ return; }
-        const deliveries=(window.__deliveries||[]).filter(d=>d.patient_id===id);
-        title.textContent='Patient #'+p.id+' – '+p.name;
-        body.innerHTML=`<div class='space-y-3'>
-          <div><div class='text-[10px] uppercase text-slate-400 mb-1'>Info</div><div class='text-xs'>Age: ${p.age??'—'}${p.condition? ' • Condition: '+escapeHTML(p.condition):''}${p.contact? ' • Contact: '+escapeHTML(p.contact):''}</div></div>
-          <div><div class='text-[10px] uppercase text-slate-400 mb-1'>Deliveries (${deliveries.length})</div><div class='space-y-2 max-h-48 overflow-auto'>${deliveries.map(d=>`<div class='flex items-center justify-between text-[11px] border-b border-slate-700 pb-1'><span>#${d.id}</span><span>${statusBadge(d.status)}</span><span>${d.scheduled_for}</span></div>`).join('') || '<div class="text-[11px] text-slate-500">No deliveries</div>'}</div></div>
-        </div>`;
-        modal.classList.remove('hidden'); modal.classList.add('flex');
-      }
-      document.getElementById('pm-close').addEventListener('click', ()=>{ const m=document.getElementById('patient-modal'); m.classList.add('hidden'); m.classList.remove('flex'); });
-      document.getElementById('patient-modal').addEventListener('click', e=>{ if(e.target.id==='patient-modal'){ document.getElementById('pm-close').click(); }});
-
-      // --- Overview tables rendering ---
-      // Overview table state & helpers
-      const overviewState={
-        patients:{sortKey:'id',sortDir:'asc',page:1,pageSize:25,search:''},
-        drugs:{sortKey:'id',sortDir:'asc',page:1,pageSize:25,search:''},
-  deliveries:{sortKey:'id',sortDir:'asc',page:1,pageSize:25,search:'',dateFrom:'',dateTo:'',selected:new Set(),visibleCols:{patient:true,drug:true,scheduled_for:true,status:true,notes:true}}
-      };
-      function debounce(fn,ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
-      function applySort(rows,key,dir){
-        return rows.sort((a,b)=>{
-          const av=a[key]??''; const bv=b[key]??'';
-          if(av<bv){ return dir==='asc' ? -1 : 1; }
-          if(av>bv){ return dir==='asc' ? 1 : -1; }
-          return 0;
-        });
-      }
-      function slicePage(rows,page,pageSize){ const start=(page-1)*pageSize; return rows.slice(start,start+pageSize); }
-      function pager(total,page,pageSize,el,prefix,renderFn){
-        el.innerHTML='';
-        const pages=Math.max(1,Math.ceil(total/pageSize));
-        if(page>pages){ page=pages; }
-        overviewState[prefix].page=page;
-        const mk=(p,l)=>{
-          const b=document.createElement('button');
-          b.textContent=l;
-          b.className='px-2 py-0.5 rounded border text-[10px] '+(p===page?'bg-indigo-600 border-indigo-600 text-white':'border-slate-600 hover:bg-slate-700');
-          b.onclick=()=>{ overviewState[prefix].page=p; renderFn(); };
-          return b;
-        };
-        if(pages<=1){ return; }
-        el.append(mk(Math.max(1,page-1),'‹'));
-        for(let p=1;p<=pages && p<=6; p++){
-          if(p===6 && pages>6){
-            const more=document.createElement('span');
-            more.textContent='…';
-            more.className='px-1 text-slate-500';
-            el.append(more);
-            el.append(mk(pages,pages));
-            break;
-          }
-            el.append(mk(p,p));
-        }
-        el.append(mk(Math.min(pages,page+1),'›'));
-      }
-      function updateCounts(){ ['patients','drugs','deliveries'].forEach(k=>{ const span=document.querySelector(`[data-count=${k}]`); if(span){ const data=window['__'+k]||[]; span.textContent=data.length; } }); }
-      function sortIndicator(th,active,dir){
-        th.querySelectorAll('.sort-ind').forEach(e=>e.remove());
-        const span=document.createElement('span');
-        span.className='sort-ind ml-1 opacity-60';
-        if(active){ span.textContent= dir==='asc' ? '▲' : '▼'; }
-        th.append(span);
-      }
-      function renderAllPatients(){
-        const body=document.getElementById('all-patients-body');
-        if(!body){ return; }
-        const empty=document.getElementById('all-patients-empty');
-        const info=document.getElementById('all-patients-info');
-        const pagerEl=document.getElementById('all-patients-pager');
-        const st=overviewState.patients;
-        st.pageSize=Number(document.getElementById('all-patients-pagesize').value)||25;
-        st.search=(document.getElementById('all-patients-search').value||'').toLowerCase();
-        let rows=(window.__patients||[]).filter(p=> !st.search || p.name.toLowerCase().includes(st.search) || (p.condition||'').toLowerCase().includes(st.search) || String(p.id)===st.search);
-        rows=applySort(rows, st.sortKey, st.sortDir);
-        const total=rows.length;
-        rows=slicePage(rows, st.page, st.pageSize);
-        body.innerHTML=rows.map(p=>`<tr class='hover:bg-slate-700/40 transition'><td class='px-3 py-2 font-medium text-slate-300'>${p.id}</td><td class='px-3 py-2'>${escapeHTML(p.name)}</td><td class='px-3 py-2 text-slate-400'>${p.age??'—'}</td><td class='px-3 py-2 text-slate-400'>${p.condition? escapeHTML(p.condition):'—'}</td><td class='px-3 py-2 text-slate-400'>${p.contact? escapeHTML(p.contact):'—'}</td></tr>`).join('');
-        empty.textContent= total? '' : 'No patients found';
-        info.textContent= total? `Showing ${(st.page-1)*st.pageSize+1}-${Math.min(total, st.page*st.pageSize)} of ${total}` : '';
-        pager(total, st.page, st.pageSize, pagerEl, 'patients', renderAllPatients);
-        updateCounts();
-        document.querySelectorAll('#tbl-all-patients thead th').forEach(th=> sortIndicator(th, th.dataset.sort===st.sortKey, st.sortDir));
-      }
-      function renderAllDeliveries(){
-        const body=document.getElementById('all-deliveries-body');
-        if(!body){ return; }
-        const empty=document.getElementById('all-deliveries-empty');
-        const info=document.getElementById('all-deliveries-info');
-        const pagerEl=document.getElementById('all-deliveries-pager');
-        const st=overviewState.deliveries;
-        st.pageSize=Number(document.getElementById('all-deliveries-pagesize').value)||25;
-        st.search=(document.getElementById('all-deliveries-search').value||'').toLowerCase();
-        st.dateFrom=document.getElementById('deliveries-date-from').value||'';
-        st.dateTo=document.getElementById('deliveries-date-to').value||'';
-        const patientMap=new Map((window.__patients||[]).map(p=>[p.id,p]));
-        const drugMap=new Map((window.__drugs||[]).map(d=>[d.id,d]));
-        let rows=(window.__deliveries||[]).map(d=> ({...d,_patient:patientMap.get(d.patient_id), _drug:drugMap.get(d.drug_id)}));
-        if(st.search){
-          rows=rows.filter(d=> String(d.id)===st.search || d.status.toLowerCase().includes(st.search) || (d.notes||'').toLowerCase().includes(st.search) || (d._patient && d._patient.name.toLowerCase().includes(st.search)) || (d._drug && d._drug.name.toLowerCase().includes(st.search)) );
-        }
-        if(st.dateFrom){ rows=rows.filter(r=> r.scheduled_for && r.scheduled_for.substring(0,10)>=st.dateFrom); }
-        if(st.dateTo){ rows=rows.filter(r=> r.scheduled_for && r.scheduled_for.substring(0,10)<=st.dateTo); }
-        rows=applySort(rows, st.sortKey, st.sortDir);
-        const total=rows.length;
-        rows=slicePage(rows, st.page, st.pageSize);
-        body.innerHTML=rows.map(d=>{
-          const sel= st.selected.has(d.id);
-          const when=d.scheduled_for? new Date(d.scheduled_for): null;
-          let rel=''; if(when){ const diff= Date.now()- when.getTime(); const mins=Math.round(diff/60000); if(Math.abs(mins)<60){ rel=`${mins>0?mins+'m ago':'in '+(-mins)+'m'}`;} else { const hrs=Math.round(mins/60); if(Math.abs(hrs)<24){ rel=`${hrs>0?hrs+'h ago':'in '+(-hrs)+'h'}`;} else { const days=Math.round(hrs/24); rel=`${days>0?days+'d ago':'in '+(-days)+'d'}`; } } }
-          return `<tr class='hover:bg-slate-700/40 transition'>
-            <td class='px-2 py-2'><input type='checkbox' data-row-select='${d.id}' class='accent-indigo-500' ${sel?'checked':''} /></td>
-            <td class='px-3 py-2 font-medium text-slate-300'>${d.id}</td>
-            <td class='px-3 py-2 text-slate-400'>${d.quantity||1}</td>
-            <td class='px-3 py-2 text-slate-400 ${st.visibleCols.patient?'':'hidden'}'>${d._patient? escapeHTML(d._patient.name):'#'+d.patient_id}</td>
-            <td class='px-3 py-2 text-slate-400 ${st.visibleCols.drug?'':'hidden'}'>${d._drug? escapeHTML(d._drug.name):'#'+d.drug_id}</td>
-            <td class='px-3 py-2 text-slate-400 whitespace-nowrap ${st.visibleCols.scheduled_for?'':'hidden'}'><div>${d.scheduled_for||'—'}${rel?`<div class='text-[10px] text-slate-500'>${rel}</div>`:''}</div></td>
-            <td class='px-3 py-2 ${st.visibleCols.status?'':'hidden'}'>${statusBadge(d.status)}</td>
-            <td class='px-3 py-2 text-slate-400 max-w-[200px] truncate ${st.visibleCols.notes?'':'hidden'}' title='${d.notes? escapeHTML(d.notes):''}'>${d.notes? escapeHTML(d.notes):'—'}</td>
-          </tr>`;
-        }).join('');
-        empty.textContent= total? '' : 'No deliveries found';
-        const qtySum=rows.reduce((a,r)=> a+(r.quantity||1),0);
-        info.textContent= total? `Showing ${(st.page-1)*st.pageSize+1}-${Math.min(total, st.page*st.pageSize)} of ${total} • Page Qty Total: ${qtySum}` : '';
-        pager(total, st.page, st.pageSize, pagerEl, 'deliveries', renderAllDeliveries);
-        updateCounts();
-        document.querySelectorAll('#tbl-all-deliveries thead th').forEach(th=> sortIndicator(th, th.dataset.sort===st.sortKey, st.sortDir));
-        // Update bulk bar
-        const bulkBar=document.getElementById('deliveries-bulk-bar');
-        const bulkCount=document.getElementById('deliveries-bulk-count');
-        const count=st.selected.size;
-        bulkBar.classList.toggle('hidden', count===0);
-        bulkCount.textContent= count? count+ ' selected' : '';
-        // Master checkbox
-        const master=document.getElementById('deliveries-select-all');
-        if(master){ master.checked = count>0 && rows.every(r=> st.selected.has(r.id)); }
-      }
+    });
   // Debounced search & page size
   const debouncedOverviewSearch = debounce(()=>{ overviewState.patients.page=1; overviewState.drugs.page=1; overviewState.deliveries.page=1; renderAllPatients(); renderAllDeliveries(); },250);
   document.addEventListener('input', e=>{
@@ -1972,7 +1777,7 @@
           if(!id || !id.startsWith('refresh-')) return;
           const actions={
             'refresh-dashboard': async ()=>{ await Promise.all([refreshPatients(), refreshDrugs(), refreshDeliveries()]); loadStats(); if(typeof renderActivity==='function') renderActivity(); },
-            'refresh-patients': async ()=>{ await refreshPatients(); renderPatients && renderPatients(); },
+            'refresh-patients': async ()=>{ await refreshPatients(); renderPatients && renderPatients(); renderAllPatients && renderAllPatients(); },
             'refresh-drugs': async ()=>{ await refreshDrugs(); renderDrugs && renderDrugs(); },
             'refresh-deliveries': async ()=>{ await refreshDeliveries(); renderDeliveries && renderDeliveries(); renderAllDeliveries && renderAllDeliveries(); loadStats(); },
             'refresh-history': async ()=>{ await refreshDeliveries(); renderHistory && renderHistory(); },
@@ -1980,7 +1785,7 @@
             'refresh-calendar': async ()=>{ await refreshDeliveries(); renderCalendar && renderCalendar(); },
             'refresh-alerts': async ()=>{ await refreshDrugs(); loadStats(); },
             'refresh-settings': async ()=>{ loadSettings && loadSettings(); toast('Defaults loaded','success'); },
-            'refresh-all-patients': async ()=>{ await refreshPatients(); renderAllPatients && renderAllPatients(); },
+            // 'refresh-all-patients' removed (merged into patients view)
             'refresh-all-deliveries': async ()=>{ await refreshDeliveries(); renderAllDeliveries && renderAllDeliveries(); }
           };
           const fn=actions[id]; if(!fn) return;
