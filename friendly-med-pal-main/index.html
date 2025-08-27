@@ -49,6 +49,13 @@
       .soft-scroll::-webkit-scrollbar{width:10px;} .soft-scroll::-webkit-scrollbar-track{background:transparent;} .soft-scroll::-webkit-scrollbar-thumb{background:#475569;border-radius:6px;} .soft-scroll::-webkit-scrollbar-thumb:hover{background:#64748b;}
       /* Search dropdown layering */
       #global-search-results{z-index:100;}
+  /* Light theme overrides */
+  .theme-light body, body.theme-light{ background:#f1f5f9; color:#0f172a; }
+  body.theme-light .bg-slate-800\/60, body.theme-light .bg-slate-800\/70, body.theme-light .bg-slate-800{ background:rgba(255,255,255,0.85); }
+  body.theme-light #main-nav{ background:rgba(255,255,255,0.75); border-color:#cbd5e1; }
+  body.theme-light .tab-btn{ color:#334155; }
+  body.theme-light .tab-btn.bg-indigo-600{ color:#fff; }
+  body.theme-light .card-hover:hover{ box-shadow:0 4px 14px -4px rgba(0,0,0,0.15); }
     </style>
   </head>
   <body class="min-h-screen bg-slate-900 text-slate-100 transition-colors">
@@ -84,6 +91,17 @@
   <button data-tab="alerts" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Alerts</button>
   <button data-tab="history" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">History</button>
   <button data-tab="settings" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Settings</button>
+  <div class="flex-1"></div>
+  <!-- Filler utility area -->
+  <div id="nav-utilities" class="hidden md:flex items-center gap-2 pl-2 pr-1">
+    <div id="nav-quick-stats" class="hidden lg:flex items-center gap-1 text-[10px] font-medium tracking-wide text-slate-400">
+      <span class="px-2 py-1 rounded-full bg-slate-700/60 border border-slate-600" data-nav-mini="patients" title="Patients">P:<span class="ml-0.5" data-count="patients"></span></span>
+      <span class="px-2 py-1 rounded-full bg-slate-700/60 border border-slate-600" data-nav-mini="drugs" title="Drugs">D:<span class="ml-0.5" data-count="drugs"></span></span>
+      <span class="px-2 py-1 rounded-full bg-slate-700/60 border border-slate-600" data-nav-mini="deliveries" title="Deliveries">DL:<span class="ml-0.5" data-count="deliveries"></span></span>
+    </div>
+    <button id="nav-low-stock" class="hidden text-[10px] px-2 py-1 rounded-full bg-rose-600/20 text-rose-300 border border-rose-500/40" title="Low stock items">Low: <span id="nav-low-stock-count">0</span></button>
+    <button id="theme-toggle" class="px-2 py-1 rounded-full bg-slate-700/70 hover:bg-slate-600 text-[11px] border border-slate-600" title="Toggle light/dark">☀️</button>
+  </div>
       </nav>
 
   <section data-view="dashboard" class="space-y-8">
@@ -721,6 +739,24 @@
         loadPrefs();
       }
 
+      // Theme handling
+      function applyTheme(t){
+        const body=document.body; if(!body) return;
+        if(t==='light'){ body.classList.add('theme-light'); body.classList.remove('theme-dark'); }
+        else { body.classList.add('theme-dark'); body.classList.remove('theme-light'); }
+        const btn=document.getElementById('theme-toggle'); if(btn){ btn.textContent = t==='light'?'🌙':'☀️'; }
+      }
+      const storedTheme= loadPref('theme','dark');
+      applyTheme(storedTheme);
+      document.addEventListener('click', e=>{
+        if(e.target && e.target.id==='theme-toggle'){
+          const cur= loadPref('theme','dark');
+            const next = cur==='dark'? 'light':'dark';
+            savePref('theme', next);
+            applyTheme(next);
+        }
+      });
+
       // Settings form handler
       document.getElementById('settings-form')?.addEventListener('submit', e => {
         e.preventDefault();
@@ -826,6 +862,16 @@
           const elP=document.querySelector('[data-count="patients"]'); if(elP) elP.textContent=data.patients;
           const elD=document.querySelector('[data-count="drugs"]'); if(elD) elD.textContent=data.drugs;
           const elDel=document.querySelector('[data-count="deliveries"]'); if(elDel) elDel.textContent=data.deliveries;
+          // Show utility bar once we have data
+          const util=document.getElementById('nav-utilities'); if(util) util.classList.remove('hidden');
+          // Low stock badge
+          const lowBtn=document.getElementById('nav-low-stock');
+          if(lowBtn){
+            if(data.low_stock_drugs>0){
+              document.getElementById('nav-low-stock-count').textContent=data.low_stock_drugs;
+              lowBtn.classList.remove('hidden');
+            } else { lowBtn.classList.add('hidden'); }
+          }
           const statsBox=document.getElementById('stats');
           statsBox.innerHTML='';
           const items=[
