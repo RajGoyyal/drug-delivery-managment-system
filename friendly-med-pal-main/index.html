@@ -27,6 +27,15 @@
   .heading-gradient { background: linear-gradient(92deg,#fff 0%,#93c5fd 40%,#818cf8 60%,#c7d2fe 90%); -webkit-background-clip: text; background-clip:text; color:transparent; }
   :root { --font-display: 'Poppins','Inter','Segoe UI',system-ui,-apple-system,Roboto,'Helvetica Neue',Arial,sans-serif; }
   .display-heading{ font-family: var(--font-display); font-weight:600; letter-spacing:-0.025em; }
+  /* Theme switch */
+  .theme-switch{ position:relative; width:54px; height:36px; border-radius:999px; display:inline-flex; align-items:center; justify-content:flex-start; padding:0 6px; background:linear-gradient(140deg,#1e293b,#334155); border:1px solid #475569; cursor:pointer; transition:background .4s,border-color .4s; font-size:12px; align-self:center; }
+  .theme-switch .ts-track{ position:absolute; inset:0; border-radius:inherit; background:linear-gradient(140deg,#334155,#1e293b); opacity:0; transition:opacity .4s; }
+  .theme-switch .ts-thumb{ position:relative; z-index:1; width:24px; height:24px; border-radius:50%; background:linear-gradient(135deg,#4f74c9,#3456a8); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; box-shadow:0 2px 5px -1px rgba(0,0,0,0.4),0 0 0 1px rgba(255,255,255,0.08) inset; transform:translateX(0); transition:transform .45s cubic-bezier(.65,.05,.36,1), background .4s, box-shadow .35s; }
+  .theme-switch:hover .ts-thumb{ box-shadow:0 3px 8px -2px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.12) inset; }
+  .theme-switch:focus-visible{ outline:2px solid #6366f1; outline-offset:3px; }
+  .theme-switch[data-mode="light"]{ background:linear-gradient(140deg,#c7d2fe,#93c5fd); border-color:#7aa2e8; }
+  .theme-switch[data-mode="light"] .ts-track{ opacity:.25; }
+  .theme-switch[data-mode="light"] .ts-thumb{ transform:translateX(28px); background:linear-gradient(135deg,#5d84e2,#3456a8); }
       /* Refresh buttons subtle style */
       button[id^="refresh-"], #inv-refresh { 
         font-weight:500; /* medium */
@@ -182,15 +191,10 @@
   <button data-tab="alerts" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Alerts</button>
   <button data-tab="history" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">History</button>
   <button data-tab="settings" class="tab-btn pill-btn px-4 rounded-full text-slate-300 hover:text-white whitespace-nowrap">Settings</button>
-  <div class="flex-1"></div>
-  <!-- Filler utility area -->
-  <div id="nav-utilities" class="hidden md:flex items-center gap-2 pl-2 pr-1">
-    <div id="nav-quick-stats" class="hidden lg:flex items-center gap-1 text-[10px] font-medium tracking-wide text-slate-400">
-  <!-- Mini stat badges removed per request -->
-    </div>
-    <button id="nav-low-stock" class="hidden text-[10px] px-2 py-1 rounded-full bg-rose-600/20 text-rose-300 border border-rose-500/40" title="Low stock items">Low: <span id="nav-low-stock-count">0</span></button>
-    <button id="theme-toggle" class="px-2 py-1 rounded-full bg-slate-700/70 hover:bg-slate-600 text-[11px] border border-slate-600" title="Toggle light/dark">☀️</button>
-  </div>
+  <button id="theme-toggle" class="theme-switch ml-1" role="switch" aria-checked="false" aria-label="Toggle light/dark theme" title="Toggle light/dark">
+    <span class="ts-track"></span>
+    <span class="ts-thumb" data-icon>☀️</span>
+  </button>
       </nav>
 
   <section data-view="dashboard" class="space-y-8">
@@ -833,16 +837,23 @@
         const body=document.body; if(!body) return;
         if(t==='light'){ body.classList.add('theme-light'); body.classList.remove('theme-dark'); }
         else { body.classList.add('theme-dark'); body.classList.remove('theme-light'); }
-        const btn=document.getElementById('theme-toggle'); if(btn){ btn.textContent = t==='light'?'🌙':'☀️'; }
+        const btn=document.getElementById('theme-toggle');
+        if(btn){
+          btn.setAttribute('aria-checked', String(t==='light'));
+          btn.dataset.mode = t;
+          const ico = btn.querySelector('[data-icon]');
+          if(ico) ico.textContent = t==='light' ? '🌙' : '☀️';
+        }
       }
       const storedTheme= loadPref('theme','dark');
       applyTheme(storedTheme);
       document.addEventListener('click', e=>{
-        if(e.target && e.target.id==='theme-toggle'){
+        const tEl = e.target && (e.target.id==='theme-toggle' ? e.target : e.target.closest && e.target.closest('#theme-toggle'));
+        if(tEl){
           const cur= loadPref('theme','dark');
-            const next = cur==='dark'? 'light':'dark';
-            savePref('theme', next);
-            applyTheme(next);
+          const next = cur==='dark'? 'light':'dark';
+          savePref('theme', next);
+          applyTheme(next);
         }
       });
 
@@ -951,16 +962,7 @@
           const elP=document.querySelector('[data-count="patients"]'); if(elP) elP.textContent=data.patients;
           const elD=document.querySelector('[data-count="drugs"]'); if(elD) elD.textContent=data.drugs;
           const elDel=document.querySelector('[data-count="deliveries"]'); if(elDel) elDel.textContent=data.deliveries;
-          // Show utility bar once we have data
-          const util=document.getElementById('nav-utilities'); if(util) util.classList.remove('hidden');
-          // Low stock badge
-          const lowBtn=document.getElementById('nav-low-stock');
-          if(lowBtn){
-            if(data.low_stock_drugs>0){
-              document.getElementById('nav-low-stock-count').textContent=data.low_stock_drugs;
-              lowBtn.classList.remove('hidden');
-            } else { lowBtn.classList.add('hidden'); }
-          }
+          // (nav utilities & low stock badge removed)
           const statsBox=document.getElementById('stats');
           statsBox.innerHTML='';
           const items=[
@@ -1611,7 +1613,16 @@
     function updateCounts(){ ['patients','drugs','deliveries'].forEach(k=>{ const span=document.querySelector(`[data-count=${k}]`); if(span){ const data=window['__'+k]||[]; span.textContent=data.length; } }); }
     function sortIndicator(th,active,dir){ th.querySelectorAll('.sort-ind').forEach(e=>e.remove()); const span=document.createElement('span'); span.className='sort-ind ml-1 opacity-60'; if(active){ span.textContent= dir==='asc'? '▲':'▼'; } th.append(span); }
     function renderAllPatients(){ const body=document.getElementById('all-patients-body'); if(!body) return; const empty=document.getElementById('all-patients-empty'); const info=document.getElementById('all-patients-info'); const pagerEl=document.getElementById('all-patients-pager'); const st=overviewState.patients; st.pageSize=Number(document.getElementById('all-patients-pagesize').value)||25; st.search=(document.getElementById('all-patients-search').value||'').toLowerCase(); let rows=(window.__patients||[]).filter(p=> !st.search || p.name.toLowerCase().includes(st.search) || (p.condition||'').toLowerCase().includes(st.search) || String(p.id)===st.search); rows=applySort(rows, st.sortKey, st.sortDir); const total=rows.length; rows=slicePage(rows, st.page, st.pageSize); body.innerHTML=rows.map(p=>`<tr class='hover:bg-slate-700/40 transition'><td class='px-3 py-2 font-medium text-slate-300'>${p.id}</td><td class='px-3 py-2'>${escapeHTML(p.name)}</td><td class='px-3 py-2 text-slate-400'>${p.age??'—'}</td><td class='px-3 py-2 text-slate-400'>${p.condition? escapeHTML(p.condition):'—'}</td><td class='px-3 py-2 text-slate-400'>${p.contact? escapeHTML(p.contact):'—'}</td></tr>`).join(''); empty.textContent= total? '' : 'No patients found'; info.textContent= total? `Showing ${(st.page-1)*st.pageSize+1}-${Math.min(total, st.page*st.pageSize)} of ${total}` : ''; pager(total, st.page, st.pageSize, pagerEl, 'patients', renderAllPatients); updateCounts(); document.querySelectorAll('#tbl-all-patients thead th').forEach(th=> sortIndicator(th, th.dataset.sort===st.sortKey, st.sortDir)); }
-    function renderAllDeliveries(){ const body=document.getElementById('all-deliveries-body'); if(!body) return; const empty=document.getElementById('all-deliveries-empty'); const info=document.getElementById('all-deliveries-info'); const pagerEl=document.getElementById('all-deliveries-pager'); const st=overviewState.deliveries; st.pageSize=Number(document.getElementById('all-deliveries-pagesize')?.value)||25; st.search=(document.getElementById('all-deliveries-search')?.value||'').toLowerCase(); st.dateFrom=document.getElementById('deliveries-date-from')?.value||''; st.dateTo=document.getElementById('deliveries-date-to')?.value||''; const patientMap=new Map((window.__patients||[]).map(p=>[p.id,p])); const drugMap=new Map((window.__drugs||[]).map(d=>[d.id,d])); let rows=(window.__deliveries||[]).map(d=> ({...d,_patient:patientMap.get(d.patient_id), _drug:drugMap.get(d.drug_id)})); if(st.search){ rows=rows.filter(d=> String(d.id)===st.search || d.status.toLowerCase().includes(st.search) || (d.notes||'').toLowerCase().includes(st.search) || (d._patient && d._patient.name.toLowerCase().includes(st.search)) || (d._drug && d._drug.name.toLowerCase().includes(st.search)) ); } if(st.dateFrom){ rows=rows.filter(r=> r.scheduled_for && r.scheduled_for.substring(0,10)>=st.dateFrom); } if(st.dateTo){ rows=rows.filter(r=> r.scheduled_for && r.scheduled_for.substring(0,10)<=st.dateTo); } rows=applySort(rows, st.sortKey, st.sortDir); const total=rows.length; rows=slicePage(rows, st.page, st.pageSize); body.innerHTML=rows.map(d=>{ const sel= st.selected.has(d.id); const when=d.scheduled_for? new Date(d.scheduled_for): null; let rel=''; if(when){ const diff= Date.now()- when.getTime(); const mins=Math.round(diff/60000); if(Math.abs(mins)<60){ rel=`${mins>0?mins+'m ago':'in '+(-mins)+'m'}`;} else { const hrs=Math.round(mins/60); if(Math.abs(hrs)<24){ rel=`${hrs>0?hrs+'h ago':'in '+(-hrs)+'h'}`;} else { const days=Math.round(hrs/24); rel=`${days>0?days+'d ago':'in '+(-days)+'d'}`; } } } return `<tr class='hover:bg-slate-700/40 transition'><td class='px-3 py-2 font-medium text-slate-300'>${d.id}</td><td class='px-3 py-2 text-slate-400'>${d.quantity||1}</td><td class='px-3 py-2 text-slate-400'>${d._patient? escapeHTML(d._patient.name):'#'+d.patient_id}</td><td class='px-3 py-2 text-slate-400'>${d._drug? escapeHTML(d._drug.name):'#'+d.drug_id}</td><td class='px-3 py-2 text-slate-400 whitespace-nowrap'>${d.scheduled_for||'—'}${rel?`<div class='text-[10px] text-slate-500'>${rel}</div>`:''}</td><td class='px-3 py-2'>${statusBadge(d.status)}</td><td class='px-3 py-2 text-slate-400 max-w-[200px] truncate' title='${d.notes? escapeHTML(d.notes):''}'>${d.notes? escapeHTML(d.notes):'—'}</td></tr>`; }).join(''); empty.textContent= total? '' : 'No deliveries found'; const qtySum=rows.reduce((a,r)=> a+(r.quantity||1),0); info.textContent= total? `Showing ${(st.page-1)*st.pageSize+1}-${Math.min(total, st.page*st.pageSize)} of ${total} • Page Qty Total: ${qtySum}` : ''; pager(total, st.page, st.pageSize, pagerEl, 'deliveries', renderAllDeliveries); updateCounts(); document.querySelectorAll('#tbl-all-deliveries thead th').forEach(th=> sortIndicator(th, th.dataset.sort===st.sortKey, st.sortDir)); }
+    function renderAllDeliveries(){ const body=document.getElementById('all-deliveries-body'); if(!body) return; const empty=document.getElementById('all-deliveries-empty'); const info=document.getElementById('all-deliveries-info'); const pagerEl=document.getElementById('all-deliveries-pager'); const st=overviewState.deliveries; st.pageSize=Number(document.getElementById('all-deliveries-pagesize')?.value)||25; st.search=(document.getElementById('all-deliveries-search')?.value||'').toLowerCase(); st.dateFrom=document.getElementById('deliveries-date-from')?.value||''; st.dateTo=document.getElementById('deliveries-date-to')?.value||''; const patientMap=new Map((window.__patients||[]).map(p=>[p.id,p])); const drugMap=new Map((window.__drugs||[]).map(d=>[d.id,d])); let rows=(window.__deliveries||[]).map(d=> ({...d,_patient:patientMap.get(d.patient_id), _drug:drugMap.get(d.drug_id)})); if(st.search){ rows=rows.filter(d=> String(d.id)===st.search || d.status.toLowerCase().includes(st.search) || (d.notes||'').toLowerCase().includes(st.search) || (d._patient && d._patient.name.toLowerCase().includes(st.search)) || (d._drug && d._drug.name.toLowerCase().includes(st.search)) ); } if(st.dateFrom){ rows=rows.filter(r=> r.scheduled_for && r.scheduled_for.substring(0,10)>=st.dateFrom); } if(st.dateTo){ rows=rows.filter(r=> r.scheduled_for && r.scheduled_for.substring(0,10)<=st.dateTo); } rows=applySort(rows, st.sortKey, st.sortDir); const total=rows.length; rows=slicePage(rows, st.page, st.pageSize); body.innerHTML=rows.map(d=>{ const sel= st.selected.has(d.id); const when=d.scheduled_for? new Date(d.scheduled_for): null; let rel=''; if(when){ const diff= Date.now()- when.getTime(); const mins=Math.round(diff/60000); if(Math.abs(mins)<60){ rel=`${mins>0?mins+'m ago':'in '+(-mins)+'m'}`;} else { const hrs=Math.round(mins/60); if(Math.abs(hrs)<24){ rel=`${hrs>0?hrs+'h ago':'in '+(-hrs)+'h'}`;} else { const days=Math.round(hrs/24); rel=`${days>0?days+'d ago':'in '+(-days)+'d'}`; } } } return `<tr class='hover:bg-slate-700/40 transition ${sel?'bg-indigo-600/10':''}'>`+
+      `<td class='px-3 py-2'><input type='checkbox' data-row-select='${d.id}' class='accent-indigo-500' ${sel?'checked':''} /></td>`+
+      `<td class='px-3 py-2 font-medium text-slate-300'>${d.id}</td>`+
+      `<td class='px-3 py-2 text-slate-400'>${d.quantity||1}</td>`+
+      `<td class='px-3 py-2 text-slate-400'>${d._patient? escapeHTML(d._patient.name):'#'+d.patient_id}</td>`+
+      `<td class='px-3 py-2 text-slate-400'>${d._drug? escapeHTML(d._drug.name):'#'+d.drug_id}</td>`+
+      `<td class='px-3 py-2 text-slate-400 whitespace-nowrap'>${d.scheduled_for||'—'}${rel?`<div class='text-[10px] text-slate-500'>${rel}</div>`:''}</td>`+
+      `<td class='px-3 py-2'>${statusBadge(d.status)}</td>`+
+      `<td class='px-3 py-2 text-slate-400 max-w-[200px] truncate' title='${d.notes? escapeHTML(d.notes):''}'>${d.notes? escapeHTML(d.notes):'—'}</td>`+
+      `</tr>`; }).join(''); empty.textContent= total? '' : 'No deliveries found'; const qtySum=rows.reduce((a,r)=> a+(r.quantity||1),0); info.textContent= total? `Showing ${(st.page-1)*st.pageSize+1}-${Math.min(total, st.page*st.pageSize)} of ${total} • Page Qty Total: ${qtySum}` : ''; pager(total, st.page, st.pageSize, pagerEl, 'deliveries', renderAllDeliveries); updateCounts(); document.querySelectorAll('#tbl-all-deliveries thead th').forEach(th=> sortIndicator(th, th.dataset.sort===st.sortKey, st.sortDir)); }
     // End moved overview block
 
     // Tabs
