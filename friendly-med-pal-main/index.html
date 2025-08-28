@@ -1669,6 +1669,19 @@
       savePref('activeTab', name);
   // Indicator removed; simplified active state only
   if(name==='patients') renderAllPatients();
+      // Smooth scroll to top of activated section (adjusting for sticky header/nav)
+      const target = document.querySelector(`[data-view="${name}"]`);
+      if(target){
+  const header = document.querySelector('body > .max-w-6xl > header') || document.querySelector('header');
+  const nav = document.getElementById('main-nav');
+  const headerH = header ? header.getBoundingClientRect().height : 0;
+  const navH = nav ? nav.getBoundingClientRect().height : 0;
+  const gap = 12; // space below header
+  const offset = headerH + navH + gap;
+  const top = target.getBoundingClientRect().top + window.scrollY - offset;
+  const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+  window.scrollTo({ top: top<0?0:top, behavior });
+      }
     }
     // Tab button click handling (event delegation so later overrides of activateTab still apply)
     document.addEventListener('click', e=>{
