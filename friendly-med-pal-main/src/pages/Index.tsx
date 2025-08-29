@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Activity, Users, Pill, FileText, Package, Boxes } from "lucide-react";
+import { Activity, Users, Pill, FileText, Package, Boxes, Bot } from "lucide-react";
 import InventoryPanel from "@/components/InventoryPanel";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { RefreshButton } from "@/components/RefreshButton";
@@ -7,6 +7,7 @@ import Dashboard from "@/components/Dashboard";
 import PatientsPanel from "@/components/PatientsPanel";
 import DrugsPanel from "@/components/DrugsPanel";
 import DeliveriesPanel from "@/components/DeliveriesPanel";
+import AiAssistPanel from "@/components/AiAssistPanel";
 import DeliveryHistory from "@/components/DeliveryHistory";
 
 interface TabDef { id:string; label:string; icon: React.ComponentType<any>; component: JSX.Element; }
@@ -19,6 +20,7 @@ const tabs: TabDef[] = [
   { id: 'deliveries', label: 'Deliveries', icon: Package, component: <DeliveriesPanel/> },
   { id: 'history', label: 'History', icon: FileText, component: <DeliveryHistory/> },
   { id: 'inventory', label: 'Inventory', icon: Boxes, component: <InventoryPanel/> },
+  { id: 'ai', label: 'AI Assist', icon: Bot, component: <AiAssistPanel/> },
   // Future: inventory, analytics, settings...
 ];
 

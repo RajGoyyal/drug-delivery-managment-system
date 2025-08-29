@@ -245,52 +245,9 @@ def generate_image(prompt: str, width: int = 512, height: int = 512, style: str 
     """
     # 1. Remote model attempt
     if ai_enabled():
-        model_name = os.environ.get("AI_IMAGE_MODEL", "gemini-2.5-flash-image-preview")
-        try:
-            # New SDK style (from google import genai)
-            try:
-                from google import genai as _genai  # type: ignore
-                client = _genai.Client(api_key=os.environ.get("GOOGLE_GENAI_API_KEY"))
-                resp = client.models.generate_content(
-                    model=model_name,
-                    contents=[prompt],
-                )
-                # Extract first image part
-                for p in getattr(resp, 'parts', []) or []:
-                    # New SDK provides as_image()
-                    try:
-                        if hasattr(p, 'as_image'):
-                            img_obj = p.as_image()
-                            if img_obj:  # PIL Image
-                                buf = io.BytesIO(); img_obj.save(buf, format='PNG')
-                                import base64 as _b64
-                                return _b64.b64encode(buf.getvalue()).decode('ascii')
-                    except Exception:
-                        continue
-            except Exception:
-                # Older SDK (google-generativeai)
-                try:
-                    import google.generativeai as genai  # type: ignore
-                    genai.configure(api_key=os.environ.get("GOOGLE_GENAI_API_KEY"))
-                    model = genai.GenerativeModel(model_name)
-                    resp = model.generate_content([prompt])
-                    # Parts may contain inline_data for images
-                    for cand in getattr(resp, 'candidates', []) or []:
-                        parts = getattr(getattr(cand, 'content', {}), 'parts', [])
-                        for part in parts:
-                            try:
-                                inline = getattr(part, 'inline_data', None) or (part.get('inline_data') if isinstance(part, dict) else None)
-                                if inline and isinstance(inline, dict):
-                                    data = inline.get('data')
-                                    if data:
-                                        return data  # already base64
-                            except Exception:
-                                continue
-                except Exception:
-                    pass  # fall back
-        except Exception:
-            # suppress and fall through to procedural
-            pass
+        img_remote = _try_remote_image(prompt)
+        if img_remote:
+            return img_remote
     # 2. Procedural fallback
     try:
         from PIL import Image, ImageDraw  # type: ignore
@@ -333,3 +290,54 @@ def generate_image(prompt: str, width: int = 512, height: int = 512, style: str 
         return _b64.b64encode(buf.getvalue()).decode('ascii')
     except Exception:
         return ""
+
+
+def _try_remote_image(prompt: str) -> str:
+    """Attempt to generate an image via Google GenAI SDKs. Returns base64 (no prefix) or ''."""
+    model_name = os.environ.get("AI_IMAGE_MODEL", "gemini-2.5-flash-image-preview")
+    key = os.environ.get("GOOGLE_GENAI_API_KEY")
+    if not key:
+        return ""
+    # New SDK path
+    try:  # pragma: no cover - network
+        from google import genai as _genai  # type: ignore
+        try:
+            client = _genai.Client(api_key=key)  # type: ignore[attr-defined]
+            resp = client.models.generate_content(  # type: ignore[attr-defined]
+                model=model_name,
+                contents=[prompt],
+            )
+            for p in getattr(resp, 'parts', []) or []:
+                try:
+                    if hasattr(p, 'as_image'):
+                        img_obj = p.as_image()
+                        if img_obj:
+                            buf = io.BytesIO(); img_obj.save(buf, format='PNG')
+                            import base64 as _b64
+                            return _b64.b64encode(buf.getvalue()).decode('ascii')
+                except Exception:
+                    continue
+        except Exception:
+            pass
+    except Exception:
+        pass
+    # Older SDK path
+    try:  # pragma: no cover - network
+        import google.generativeai as genai  # type: ignore
+        genai.configure(api_key=key)
+        model = genai.GenerativeModel(model_name)
+        resp = model.generate_content([prompt])
+        for cand in getattr(resp, 'candidates', []) or []:
+            parts = getattr(getattr(cand, 'content', {}), 'parts', [])
+            for part in parts:
+                try:
+                    inline = getattr(part, 'inline_data', None) or (part.get('inline_data') if isinstance(part, dict) else None)
+                    if inline and isinstance(inline, dict):
+                        data = inline.get('data')
+                        if data:
+                            return data
+                except Exception:
+                    continue
+    except Exception:
+        return ""
+    return ""

@@ -79,3 +79,32 @@ You can remove the `src/` directory and build config files if you no longer need
 ## License
 
 MIT (adjust as needed).
+
+## AI & Image Generation
+
+Set a Google AI Studio key in a `.env` file at repo root (same level as `index.html`):
+
+```
+GOOGLE_GENAI_API_KEY=your_key_here
+AI_MODEL=gemini-2.5-pro                       # optional text/chat model override
+AI_IMAGE_MODEL=gemini-2.5-flash-image-preview # optional image model override
+```
+
+Install backend dependencies (includes Pillow + both new & legacy Google SDKs):
+
+```powershell
+py -m pip install -r server/requirements.txt
+```
+
+Image endpoint (procedural fallback if model unavailable):
+
+```
+POST /api/ai/image
+Body: {"prompt": "a cat eating a nano-banana", "width":512, "height":512, "style":"cool"}
+Response: { image: "data:image/png;base64,..." }
+```
+
+If the remote SDK returns multiple parts only the first image is used. Any failure (network, quota, SDK missing) triggers a deterministic gradient + geometry image so the UI always renders something.
+
+To regenerate procedural images deterministically, the seed derives from prompt + size + style.
+
