@@ -14,8 +14,12 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      body { font-feature-settings: "cv02","cv03","cv04","cv11"; background: linear-gradient(145deg,#0f172a,#020617 70%) fixed; position:relative; min-height:100vh; color:#f1f5f9; }
-      body::before{content:"";position:fixed;inset:0;background:radial-gradient(circle at 18% 18%, rgba(99,102,241,0.40), transparent 62%), radial-gradient(circle at 82% 75%, rgba(14,165,233,0.32), transparent 68%);pointer-events:none;z-index:-2;}
+      body { font-feature-settings: "cv02","cv03","cv04","cv11"; background: linear-gradient(150deg,#0b1c33 0%,#071527 45%,#031020 85%) fixed; position:relative; min-height:100vh; color:#f1f5f9; }
+      body::before{content:"";position:fixed;inset:0;background:
+        radial-gradient(circle at 18% 20%, rgba(56,97,251,0.30), transparent 62%),
+        radial-gradient(circle at 82% 78%, rgba(14,126,233,0.28), transparent 70%),
+        linear-gradient(120deg, rgba(29,78,216,0.15), rgba(2,8,23,0));
+        pointer-events:none;z-index:-2;}
       body::after{content:"";position:fixed;inset:0;background:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.14"/></svg>');mix-blend-mode:overlay;pointer-events:none;z-index:-1;opacity:.28;}
       .fade-enter { opacity:0; transform: translateY(4px); }
       .fade-enter-active { transition: all .25s; opacity:1; transform: translateY(0); }
@@ -25,6 +29,12 @@
       .card-hover { transition: all .45s cubic-bezier(.4,.2,.2,1); }
       .card-hover:hover { transform: translateY(-4px); box-shadow: 0 16px 40px -10px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,0.05) inset; }
   .heading-gradient { background: linear-gradient(92deg,#fff 0%,#93c5fd 40%,#818cf8 60%,#c7d2fe 90%); -webkit-background-clip: text; background-clip:text; color:transparent; }
+  /* Adjust heading gradient for light mode so it's readable on pale background */
+  body.theme-light .heading-gradient { 
+    background: linear-gradient(92deg,#1e3a8a 0%,#2563eb 35%,#4338ca 60%,#6366f1 85%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow:0 1px 1px rgba(255,255,255,0.4);
+  }
   :root { --font-display: 'Poppins','Inter','Segoe UI',system-ui,-apple-system,Roboto,'Helvetica Neue',Arial,sans-serif; }
   .display-heading{ font-family: var(--font-display); font-weight:600; letter-spacing:-0.025em; }
   /* Theme switch */
@@ -54,7 +64,9 @@
   .nav-scroll { flex-wrap:nowrap !important; overflow-x:auto; -ms-overflow-style:none; }
   .nav-scroll::-webkit-scrollbar{display:none;}
       /* Panels (reduce see-through) */
-    [data-view].bg-slate-800{background:linear-gradient(155deg,rgba(30,41,59,0.94),rgba(15,23,42,0.88));-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);border-color:rgba(255,255,255,0.07);}
+    [data-view].bg-slate-800{background:
+      linear-gradient(165deg,rgba(18,34,58,0.92),rgba(9,22,41,0.90) 55%,rgba(5,14,28,0.95));
+      -webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);border-color:rgba(255,255,255,0.07);}
   body.theme-light [data-view="inventory"],
   body.theme-light [data-view="patients"],
   body.theme-light [data-view="deliveries"],
@@ -92,6 +104,79 @@
   /* Hero splash background extracted from inline style */
   .hero-splash { position:relative; }
   .hero-splash-bg { background-image: radial-gradient(circle at 25% 15%, #6366f1 0, transparent 60%), radial-gradient(circle at 75% 85%, #0ea5e9 0, transparent 55%); }
+  /* Light theme variable definitions (were previously missing) */
+  body.theme-light {
+    /* Base surfaces */
+    --g-surface: linear-gradient(155deg,#f8fafc,#e2e8f0 65%); /* panel bg */
+    --c-bg: #f1f5f9;            /* global background overlay ref */
+    --c-bg-alt: #ffffff;        /* card / toast background */
+    --c-border: #cbd5e1;        /* neutral border */
+    --c-text-soft: #475569;     /* medium emphasis text */
+    --c-text-faint: #64748b;    /* de-emphasized text */
+    --c-danger-soft: #fee2e2;   /* soft red background */
+    background: linear-gradient(145deg,#f1f5f9,#e2e8f0 70%) fixed !important;
+    color:#0f172a !important;
+  }
+  body.theme-light::before{background:radial-gradient(circle at 18% 18%, rgba(99,102,241,0.20), transparent 62%), radial-gradient(circle at 82% 75%, rgba(14,165,233,0.18), transparent 68%) !important;}
+  body.theme-light::after{opacity:.08 !important; mix-blend-mode:normal !important;}
+  /* Ensure dark theme variables (fallbacks) so transitions remain consistent */
+  /* Force override of common dark background utility classes when in light mode */
+  body.theme-light .bg-slate-900,
+  body.theme-light .bg-slate-900\/40,
+  body.theme-light .bg-slate-800,
+  body.theme-light .bg-slate-800\/60,
+  body.theme-light .bg-slate-800\/70,
+  body.theme-light .bg-slate-700,
+  body.theme-light .bg-slate-700\/60 {
+    background: #ffffff !important;
+    --tw-bg-opacity:1 !important;
+    color:#0f172a !important;
+    border-color: var(--c-border) !important;
+  }
+  body.theme-light .text-slate-300, body.theme-light .text-slate-400 { color:#475569 !important; }
+  body.theme-light .tab-btn { color:#334155 !important; }
+  body.theme-light .tab-btn.bg-indigo-600 { color:#ffffff !important; }
+  /* Light mode inventory table header */
+  body.theme-light #inv-table thead { 
+    background: linear-gradient(90deg,#e2e8f0,#f8fafc) !important;
+    color:#0f172a !important;
+    box-shadow:0 1px 0 var(--c-border) inset;
+  }
+  body.theme-light #inv-table thead th { color:#1e293b !important; font-weight:600; }
+  body.theme-light #inv-table tbody { color:#1e293b; }
+  body.theme-light #inv-table tbody tr:hover td { background:#f1f5f9; }
+  /* Calendar styling improvements */
+  body.theme-dark [data-view="calendar"]{background:linear-gradient(165deg,rgba(18,34,58,0.92),rgba(9,22,41,0.9))!important;}
+  body.theme-dark #cal-grid button{transition:background .25s,border-color .25s, box-shadow .25s;}
+  body.theme-dark #cal-grid button:hover{background:rgba(99,102,241,0.10); box-shadow:0 0 0 1px rgba(99,102,241,0.25) inset;}
+  body.theme-light [data-view="calendar"]{background:linear-gradient(145deg,#ffffff,#f1f5f9 70%)!important; border-color:var(--c-border)!important;}
+  body.theme-light #cal-grid div{background:#f1f5f9;border:1px dashed var(--c-border);}
+  body.theme-light #cal-grid button{background:#ffffff; border:1px solid var(--c-border); color:#0f172a;}
+  body.theme-light #cal-grid button .text-slate-300{color:#475569 !important;}
+  body.theme-light #cal-grid button .text-slate-500{color:#64748b !important;}
+  body.theme-light #cal-grid button .bg-slate-700{background:#e2e8f0 !important; color:#1e293b !important;}
+  body.theme-light #cal-grid button:hover{border-color:#3b82f6; background:#eff6ff;}
+  body.theme-light #cal-grid button[data-cal-day]{transition:background .25s,border-color .25s, box-shadow .25s;}
+  body.theme-light #cal-grid button[data-cal-day].ring-1{box-shadow:0 0 0 1px #3b82f6 inset;}
+  body.theme-light #cal-grid button[data-cal-day][class*='border-indigo-500']{background:#eef2ff;}
+  body.theme-light #cal-grid button[data-cal-day][class*='border-indigo-500'] span.font-medium{color:#1e3a8a!important;}
+  body.theme-dark, body:not(.theme-light){
+    --g-surface: linear-gradient(170deg,#10223c 0%,#0c1a30 55%,#081325 100%);
+    --c-bg:#071527;
+    --c-bg-alt:#10243d;
+    --c-border:rgba(255,255,255,0.07);
+    --c-text-soft:#cdd8e5;
+    --c-text-faint:#93a8c2;
+    --c-danger-soft:#3d0f17; /* subtle dark danger tint */
+  }
+  /* Nav & active tab gradient tweaks */
+  body.theme-dark #main-nav{background:linear-gradient(140deg,rgba(13,35,63,0.85),rgba(7,20,39,0.88))!important;}
+  body.theme-dark .tab-btn.bg-indigo-600{background:linear-gradient(90deg,#1e40af,#4338ca 55%,#4f46e5)!important; box-shadow:0 0 0 1px rgba(255,255,255,0.08) inset,0 4px 12px -4px rgba(0,0,0,0.6);} 
+  body.theme-dark .tab-btn.bg-indigo-600:hover{filter:brightness(1.08);}  
+  /* Hero splash refined gradient */
+  body.theme-dark .hero-splash-bg{background-image:radial-gradient(circle at 22% 18%, rgba(79,70,229,0.55), transparent 62%),radial-gradient(circle at 78% 82%, rgba(2,132,199,0.45), transparent 60%);} 
+  /* Panel subtle border & glow */
+  body.theme-dark [data-view].bg-slate-800{box-shadow:0 0 0 1px rgba(255,255,255,0.04) inset,0 8px 22px -12px rgba(0,0,0,0.7);} 
     </style>
   </head>
   <body class="min-h-screen bg-slate-900 text-slate-100 transition-colors">
@@ -820,8 +905,16 @@
         const body=document.body; if(!body) return;
   // add cross-fade helper class (removed after animation)
   body.classList.add('theme-xfade-enter');
-        if(t==='light'){ body.classList.add('theme-light'); body.classList.remove('theme-dark'); }
-        else { body.classList.add('theme-dark'); body.classList.remove('theme-light'); }
+        if(t==='light'){
+          body.classList.add('theme-light'); body.classList.remove('theme-dark');
+          // swap utility colors for light mode
+          body.classList.remove('bg-slate-900','text-slate-100');
+          body.classList.add('bg-slate-50','text-slate-900');
+        } else {
+          body.classList.add('theme-dark'); body.classList.remove('theme-light');
+          body.classList.remove('bg-slate-50','text-slate-900');
+          body.classList.add('bg-slate-900','text-slate-100');
+        }
         const btn=document.getElementById('theme-toggle');
         if(btn){
           btn.setAttribute('aria-checked', String(t==='light'));
