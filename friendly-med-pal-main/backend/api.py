@@ -319,6 +319,116 @@ def list_removals(drug_id: Optional[int] = None, limit: int = Query(200, ge=1, l
 def health():
     return {"status": "ok", "time": datetime.now(timezone.utc).isoformat()}
 
+# ----------------------------- AI Assistant (stub) ---------------------------
+from typing import Any, Iterable  # noqa: E402 (placed after FastAPI app creation)
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatPayload(BaseModel):
+    history: List[ChatMessage] = Field(default_factory=list)
+    persona: Optional[str] = 'general'
+    temperature: Optional[float] = 0.2
+    format: Optional[str] = 'auto'
+    context: Optional[str] = None
+
+class ChatReply(BaseModel):
+    reply: str
+    model: str = 'stub-local'
+    usage: dict[str, Any]
+
+def _low_stock_rows(limit: int = 50) -> list[dict[str, Any]]:
+    cur = service.conn.execute("SELECT id,name,stock,reorder_level FROM drugs WHERE COALESCE(stock,0) <= COALESCE(reorder_level,0) ORDER BY name LIMIT ?", (limit,))
+    return [dict(r) for r in cur.fetchall()]
+
+def _last_user(history: Iterable[ChatMessage]) -> str:
+    for m in reversed(list(history)):
+        if m.role == 'user':
+            return m.content
+    return ''
+
+@app.post('/api/ai/chat', response_model=ChatReply)
+def ai_chat(payload: ChatPayload):
+    last_user = _last_user(payload.history)
+    wants_stock = any(k in last_user.lower() for k in ['stockout', 'low stock', 'reorder', 'stock risk'])
+    low_rows = _low_stock_rows() if (payload.context or wants_stock) else []
+    try:
+        print(f"[AI][FastAPI][chat] persona={payload.persona} ctx_included={'yes' if payload.context else 'no'} ctx_len={len(payload.context) if payload.context else 0}")
+    except Exception:
+        pass
+    parts: list[str] = []
+    if last_user:
+        parts.append(f"You asked: {last_user.strip()}")
+    else:
+        parts.append("No question detected; providing status summary.")
+    if low_rows:
+        formatted = ', '.join(f"{r['name']} (stock {r['stock']} / reorder {r['reorder_level']})" for r in low_rows)
+        parts.append(f"Low stock / at-risk drugs: {formatted}")
+    else:
+        if wants_stock:
+            parts.append("No low stock drugs right now.")
+        else:
+            parts.append("Enable Context to include live low stock details." if not payload.context else "Context processed (no low stock rows).")
+    persona = (payload.persona or 'general').lower()
+    if persona == 'friendly':
+        parts.append("Let me know if you want deeper analysis – happy to help! 😊")
+    elif persona == 'analyst':
+        parts.append("Source: real-time inventory snapshot.")
+    if payload.context and low_rows:
+        parts.append(f"Context integrated (lines={len(payload.context.splitlines())}).")
+    reply = '\n'.join(parts)
+    total_chars = sum(len(m.content) for m in payload.history) + len(reply)
+    usage = {
+        'prompt_chars': total_chars - len(reply),
+        'completion_chars': len(reply),
+        'total': total_chars,
+        'total_tokens': max(1, total_chars // 4),
+    }
+    return ChatReply(reply=reply, usage=usage)
+
+class RewriteRequest(BaseModel):
+    text: str
+    mode: Optional[str] = 'simplify'
+
+class RewriteResponse(BaseModel):
+    rewrite: str
+    mode: str
+    original_mode: str | None = None
+
+@app.post('/api/ai/rewrite', response_model=RewriteResponse)
+def ai_rewrite(payload: RewriteRequest):
+    text = payload.text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail='text required')
+    mode_in = (payload.mode or 'simplify').lower().strip()
+    alias_map = {
+        'simplify': ['simplify','summary','summarize','shorten'],
+        'bulletize': ['bulletize','bullet','bullets','list','bullet points'],
+        'expand': ['expand','elaborate','detail','more'],
+        'formal': ['formal','formalize','formalise','professional']
+    }
+    mode = 'simplify'
+    for k, vals in alias_map.items():
+        if mode_in in vals:
+            mode = k
+            break
+    out = text
+    if mode == 'simplify':
+        sentences = [s.strip() for s in text.replace('\n', ' ').split('.') if s.strip()]
+        out = '. '.join(sentences[:3])
+        if len(sentences) > 3:
+            out += ' (summary truncated)'
+    elif mode == 'bulletize':
+        parts = [p.strip() for p in text.replace('\n', ' ').split('.') if p.strip()]
+        out = '\n'.join(f"- {p}" for p in parts)
+    elif mode == 'expand':
+        out = f"In more detail, {text} This elaboration is a placeholder for richer model-based expansion."
+    elif mode == 'formal':
+        out = text.replace(" can't"," cannot").replace(" won't"," will not").replace(" I'm"," I am")
+        out = "In summary, " + out
+    return RewriteResponse(rewrite=out, mode=mode, original_mode=mode_in)
+
 
 # ----------------------------- Additional CRUD for Frontend ------------------
 class DrugUpdate(BaseModel):

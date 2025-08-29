@@ -267,6 +267,131 @@ def ai_answer():
     except Exception as e:
         return jsonify({'detail': 'ai error', 'error': str(e)}), 500
 
+# --- AI chat & rewrite (stub with real inventory awareness) ---------------
+def _current_low_stock(limit: int = 50):
+    """Return low stock drugs directly from DB (real-time)."""
+    conn = get_conn()
+    cur = conn.execute("SELECT id,name,stock,reorder_level FROM drugs WHERE COALESCE(stock,0) <= COALESCE(reorder_level,0) ORDER BY name LIMIT ?", (limit,))
+    rows = [dict(r) for r in cur.fetchall()]
+    conn.close()
+    return rows
+
+@app.post('/api/ai/chat')
+def ai_chat():
+    """Chat endpoint consumed by the advanced assistant frontend.
+
+    Expected JSON payload shape (all optional except history):
+      {
+        "history": [{"role": "user"|"assistant"|"system", "content": str}, ...],
+        "persona": str,
+        "temperature": float,
+        "format": "auto"|"markdown"|"plain"|"json",
+        "context": str   # when the user enabled the Context checkbox
+      }
+
+    This stub DOES NOT call a real LLM yet. It synthesizes a response using:
+      - Last user message intent (simple keyword heuristics)
+      - Real-time low stock query when relevant or when context provided
+      - Basic stats derived from history length
+    """
+    try:
+        if not request.is_json:
+            return jsonify({'detail': 'JSON body required'}), 400
+        payload = request.get_json(force=True) or {}
+        history = payload.get('history') or []
+        if not isinstance(history, list):
+            return jsonify({'detail': 'history must be a list'}), 400
+        last_user = next((m.get('content','') for m in reversed(history) if isinstance(m, dict) and m.get('role')=='user'), '')
+        lower_q = (last_user or '').lower()
+        persona = (payload.get('persona') or 'general').lower()
+        context_text = payload.get('context') or ''
+        # Intent flags
+        wants_stock = any(k in lower_q for k in ['stockout','low stock','low-stock','reorder','stock risk','risk of stockout'])
+        # Only fetch when context explicitly provided
+        low_stock_rows = _current_low_stock() if context_text else []
+        try:
+            print(f"[AI][Flask][chat] persona={persona} ctx={'on' if context_text else 'off'} low_rows={len(low_stock_rows)}")
+        except Exception:
+            pass
+        parts=[]
+        if last_user:
+            parts.append(f"You asked: {last_user.strip()}")
+        else:
+            parts.append("No direct question detected; providing status summary.")
+        if low_stock_rows:
+            formatted = ', '.join(f"{r['name']} (stock {r['stock']} / reorder {r['reorder_level']})" for r in low_stock_rows)
+            parts.append(f"Context Low Stock Snapshot: {formatted}")
+        else:
+            if wants_stock:
+                parts.append("Enable Context to retrieve the live low stock list.")
+            else:
+                parts.append("(Tip: enable Context checkbox to include live inventory risk data.)")
+        if persona == 'friendly':
+            parts.append("Let me know if you want deeper analysis or projections – happy to help! 😊")
+        elif persona == 'analyst':
+            parts.append("Data source: live inventory snapshot at query time.")
+        if context_text and not low_stock_rows:
+            parts.append("Context processed (no low stock anomalies).")
+        if context_text and low_stock_rows:
+            parts.append(f"Context integrated (lines={len(context_text.splitlines())}).")
+        reply='\n'.join(parts)
+        total_chars = sum(len(str(m.get('content',''))) for m in history if isinstance(m, dict)) + len(reply)
+        usage={
+            'prompt_chars': total_chars - len(reply),
+            'completion_chars': len(reply),
+            'total': total_chars,
+            'total_tokens': max(1, total_chars // 4)
+        }
+        return jsonify({'reply': reply, 'model': 'stub-local', 'usage': usage, 'context_included': bool(context_text)}), 200
+    except Exception as e:
+        return jsonify({'detail': 'chat_error', 'error': str(e)}), 500
+
+@app.post('/api/ai/rewrite')
+def ai_rewrite():
+    """Rewrite endpoint performing simple deterministic transformations.
+
+    Payload: { "text": str, "mode": "simplify"|"bulletize"|"expand"|"formal" }
+    Returns: { rewrite: str }
+    """
+    try:
+        if not request.is_json:
+            return jsonify({'detail': 'JSON body required'}), 400
+        p = request.get_json(force=True) or {}
+        text = (p.get('text') or '').strip()
+        mode_in = (p.get('mode') or 'simplify').lower().strip()
+        alias_map = {
+            'simplify': ['simplify','summary','summarize','shorten'],
+            'bulletize': ['bulletize','bullet','bullets','list','bullet points'],
+            'expand': ['expand','elaborate','detail','more'],
+            'formal': ['formal','formalize','formalise','professional']
+        }
+        mode = 'simplify'
+        for k, vals in alias_map.items():
+            if mode_in in vals:
+                mode = k
+                break
+        if not text:
+            return jsonify({'detail': 'text required'}), 400
+        out = text
+        if mode == 'simplify':
+            sentences = [s.strip() for s in text.replace('\n', ' ').split('.') if s.strip()]
+            out = '. '.join(sentences[:3])
+            if len(sentences) > 3:
+                out += ' (summary truncated)'
+        elif mode == 'bulletize' or mode == 'bullet':
+            parts = [p.strip() for p in text.replace('\n', ' ').split('.') if p.strip()]
+            out = '\n'.join(f"- {p}" for p in parts)
+        elif mode == 'expand':
+            out = f"In more detail, {text} This elaboration is a placeholder for richer model-based expansion."  # noqa: E501
+        elif mode == 'formal':
+            out = text.replace(" can't", " cannot").replace(" won't", " will not").replace(" I'm", " I am")
+            out = "In summary, " + out
+        else:
+            out = text  # unknown mode -> pass-through
+    return jsonify({'rewrite': out, 'mode': mode, 'original_mode': mode_in}), 200
+    except Exception as e:  # pragma: no cover
+        return jsonify({'detail': 'rewrite_error', 'error': str(e)}), 500
+
 # --- Favicon ---------------------------------------------------------------
 @app.get('/favicon.ico')
 def favicon():

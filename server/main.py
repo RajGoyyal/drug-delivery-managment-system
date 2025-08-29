@@ -982,6 +982,7 @@ def ai_patient_summary():
 def ai_chat():
     data = request.get_json(force=True) or {}
     history = data.get("history") or []
+    context_blob = (data.get('context') or '').strip()
     if not isinstance(history, list):
         return jsonify({"detail": "history must be a list"}), 400
     # Coerce shape
@@ -991,14 +992,66 @@ def ai_chat():
             role = m.get("role", "user")
             if role not in ("user", "assistant"): role = "user"
             sanitized.append({"role": role, "content": m["content"][:2000]})
+    # Derive live operational signals (always; cheap queries)
+    def live_signals():
+        sig = {}
+        try:
+            with get_conn() as conn:
+                cur = conn.cursor()
+                # Low stock
+                cur.execute("SELECT name, stock, reorder_level FROM drugs WHERE COALESCE(stock,0) <= COALESCE(reorder_level,0) ORDER BY name LIMIT 20")
+                sig['low_stock'] = [dict(name=r[0], stock=r[1] or 0, reorder=r[2] or 0) for r in cur.fetchall()]
+                # Overdue deliveries (pending scheduled before today)
+                cur.execute("SELECT id, patient_id, drug_id, scheduled_for FROM deliveries WHERE status='pending' AND date(scheduled_for) < date('now') ORDER BY scheduled_for LIMIT 25")
+                sig['overdue'] = [dict(id=r[0], patient_id=r[1], drug_id=r[2], scheduled_for=r[3]) for r in cur.fetchall()]
+                # Missed deliveries (recent 30d)
+                cur.execute("SELECT COUNT(*) FROM deliveries WHERE status='missed' AND date(scheduled_for)>=date('now','-30 day')")
+                sig['missed_30d'] = cur.fetchone()[0]
+                # Adherence risk heuristic: patients with 3+ missed
+                cur.execute("""
+                   SELECT p.id, p.name, COUNT(*) as missed
+                   FROM deliveries d JOIN patients p ON p.id=d.patient_id
+                   WHERE d.status='missed' AND date(d.scheduled_for)>=date('now','-30 day')
+                   GROUP BY p.id HAVING missed>=3 ORDER BY missed DESC LIMIT 15
+                """)
+                sig['risk_patients'] = [dict(patient_id=r[0], name=r[1], missed_30d=r[2]) for r in cur.fetchall()]
+        except Exception as e:
+            sig['live_error'] = str(e)
+        return sig
+    signals = live_signals()
+
+    # If model unavailable, craft a richer fallback using context + signals
     if not (_ai_service and hasattr(_ai_service, 'chat_reply')):
-        fallback = "AI module not loaded. Set GOOGLE_GENAI_API_KEY and restart server."
+        parts = []
+        parts.append("AI module not loaded; providing heuristic operational summary.")
+        if context_blob:
+            parts.append("User context lines: " + str(len(context_blob.splitlines())))
+        if signals.get('low_stock'):
+            parts.append("Low stock: " + ', '.join(f"{d['name']}({d['stock']}/{d['reorder']})" for d in signals['low_stock']))
+        if signals.get('overdue'):
+            parts.append(f"Overdue deliveries: {len(signals['overdue'])}")
+        if signals.get('risk_patients'):
+            parts.append("Adherence risk patients: " + ', '.join(f"{rp['name']}({rp['missed_30d']} missed)" for rp in signals['risk_patients']))
+        if signals.get('missed_30d') is not None:
+            parts.append(f"Missed (30d): {signals['missed_30d']}")
+        if signals.get('live_error'):
+            parts.append("(Live data error: " + signals['live_error'] + ")")
+        fallback = '\n'.join(parts)
         sanitized.append({"role": "assistant", "content": fallback})
-        return jsonify({"reply": fallback, "history": sanitized, "ai": False}), 200
+        return jsonify({"reply": fallback, "history": sanitized, "ai": False, "signals": signals, "context_used": bool(context_blob)}), 200
     try:
-        reply = _ai_service.chat_reply(sanitized)
+        # Provide model with augmented system-style preamble including structured signals & context
+        augmented = list(sanitized)
+        sys_preamble_parts = []
+        if context_blob:
+            sys_preamble_parts.append("USER_SUPPLIED_CONTEXT:\n" + context_blob[:4000])
+        if signals:
+            sys_preamble_parts.append("LIVE_SIGNALS=" + str({k: (signals[k] if k!='low_stock' else signals[k][:8]) for k in list(signals.keys())[:6]}))
+        if sys_preamble_parts:
+            augmented.insert(0, {"role":"system","content":"\n\n".join(sys_preamble_parts)})
+        reply = _ai_service.chat_reply(augmented)
         sanitized.append({"role": "assistant", "content": reply})
-        return jsonify({"reply": reply, "history": sanitized, "ai": _ai_enabled()})
+        return jsonify({"reply": reply, "history": sanitized, "ai": _ai_enabled(), "context_used": bool(context_blob), "signals": signals})
     except Exception as e:
         err = f"AI error: {e}"
         sanitized.append({"role": "assistant", "content": err})
@@ -1130,33 +1183,58 @@ def ai_image():
 
 @app.post('/api/ai/rewrite')
 def ai_rewrite():
-    """Rewrite / transform a given text (simplify or bulletize).
+    """Rewrite / transform text with expanded mode & alias support.
 
-    Body: {text:str, mode?:'simplify'|'bulletize'}
-    Returns transformed text (AI when available, heuristic fallback otherwise).
+    Body: {text:str, mode?: alias}
+    Canonical modes: simplify, bulletize, expand, formal
+    Aliases map to canonical forms (e.g. summary->simplify, list->bulletize, elaborate->expand, formalize->formal).
+    Always returns a result; unknown/empty mode falls back to simplify.
     """
     data = request.get_json(force=True) or {}
     text = (data.get('text') or '').strip()
     if not text:
         return jsonify({"detail": "text required"}), 400
-    mode = (data.get('mode') or 'simplify').lower()
-    if mode not in {'simplify','bulletize'}:
-        return jsonify({"detail": "invalid mode"}), 400
+    mode_in = (data.get('mode') or 'simplify').lower().strip()
+    alias_map = {
+        'simplify': ['simplify','summary','summarize','shorten'],
+        'bulletize': ['bulletize','bullet','bullets','list','bullet points'],
+        'expand': ['expand','elaborate','detail','more'],
+        'formal': ['formal','formalize','formalise','professional']
+    }
+    mode = 'simplify'
+    for k, vals in alias_map.items():
+        if mode_in in vals:
+            mode = k
+            break
     rewritten = None
     if _ai_service and hasattr(_ai_service, 'summarize'):
         try:
-            task_spec = {"task": "rewrite", "mode": mode, "text": text}
+            task_spec = {"task": "rewrite", "mode": mode, "text": text, "original_mode": mode_in}
             rewritten = _ai_service.summarize(task_spec)
         except Exception as e:
             rewritten = None
             print('[ai_rewrite] AI rewrite failed, fallback:', e)
     if not rewritten:
         if mode == 'bulletize':
-            parts = [p.strip() for p in text.split('.') if p.strip()][:8]
+            parts = [p.strip() for p in text.replace('\n',' ').split('.') if p.strip()][:12]
             rewritten = '\n'.join(f"- {p}" for p in parts)
+        elif mode == 'expand':
+            rewritten = f"In more detail, {text} (expanded placeholder)."
+        elif mode == 'formal':
+            tmp = text.replace(" can't"," cannot").replace(" won't"," will not").replace(" I'm"," I am")
+            rewritten = "In summary, " + tmp
         else:  # simplify
-            rewritten = (text[:400] + ('…' if len(text) > 400 else ''))
-    return jsonify({"rewritten": rewritten, "mode": mode, "ai": _ai_enabled() and bool(rewritten)})
+            sentences = [s.strip() for s in text.replace('\n',' ').split('.') if s.strip()]
+            rewritten = '. '.join(sentences[:5])
+            if len(sentences) > 5:
+                rewritten += ' (summary truncated)'
+    return jsonify({
+        "rewritten": rewritten,
+        "rewrite": rewritten,  # alias for frontend expecting 'rewrite'
+        "mode": mode,
+        "original_mode": mode_in,
+        "ai": _ai_enabled() and bool(rewritten)
+    })
 
 
 @app.get("/api/ai/status")

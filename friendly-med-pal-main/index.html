@@ -2437,6 +2437,32 @@
         function renderExisting(){ (window.__assistantHistory||[]).forEach(m=> add(m.role, m.content)); }
         renderExisting();
 
+        // Auto greeting (only once if no history)
+        (function autoGreet(){
+          if((window.__assistantHistory||[]).length) return; // already have history
+          let attempts=0;
+          function ready(){
+            // Wait briefly so initial data (stats/patients/drugs) can load to personalize
+            attempts++;
+            const pts=(window.__patients||[]).length;
+            const drs=(window.__drugs||[]).length;
+            const dels=(window.__deliveries||[]).length;
+            if(attempts<10 && (pts===0 && drs===0 && dels===0)){
+              return setTimeout(ready, 300); // retry until some data or attempts exhausted
+            }
+            const lineParts=[];
+            if(pts) lineParts.push(pts+ ' patients');
+            if(drs) lineParts.push(drs+ ' drugs');
+            if(dels) lineParts.push(dels+ ' deliveries');
+            const statsSummary=lineParts.length? (' I see '+ lineParts.join(', ') + ' in the system.') : '';
+            const greet = 'Hi! I\'m your operational assistant. Ask me about adherence, inventory risk, overdue deliveries, or request recommendations.'+statsSummary+' Enable "Context" for data‑aware answers.';
+            window.__assistantHistory.push({role:'assistant', content:greet});
+            persist();
+            add('assistant', greet);
+          }
+          ready();
+        })();
+
         const defaultSuggestions=[
           'Summarize adherence issues',
           'List drugs at risk of stockout',
@@ -2491,6 +2517,8 @@
               const ctx=buildContext();
                 payload.context = ctx;
                 if(ctxPreviewDetails){ ctxPreviewDetails.classList.remove('hidden'); if(ctxPreviewText) ctxPreviewText.textContent=ctx; }
+                // Visual indicator in log to confirm context was attached
+                add('assistant', '(context attached '+ctx.split('\n').length+' lines)');
             }
             const res= await fetch(API_BASE+'/api/ai/chat',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
             let data=null; try{ data=await res.json(); }catch{}
@@ -2516,14 +2544,23 @@
 
         async function triggerRewrite(sourceText){
           if(!sourceText) return;
-          const mode=rewriteModeSel?.value||'simplify';
+          // Normalize rewrite mode (supports aliases)
+          const rawMode=(rewriteModeSel?.value||'simplify').toLowerCase();
+          const aliasMap={
+            simplify:['simplify','summary','summarize','shorten'],
+            bulletize:['bulletize','bullet','bullets','list','bullet points'],
+            expand:['expand','elaborate','detail','more'],
+            formal:['formal','formalize','formalise','professional']
+          };
+          let mode='simplify';
+          for(const k in aliasMap){ if(aliasMap[k].includes(rawMode)){ mode=k; break; } }
           rewriteBlock.classList.remove('hidden');
           rewriteBlock.textContent='Rewriting ('+mode+')…';
           try {
             const res= await fetch(API_BASE+'/api/ai/rewrite',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text: sourceText, mode })});
             let data=null; try{ data=await res.json(); }catch{}
             if(!res.ok) throw new Error((data&& (data.detail||data.error))||('HTTP '+res.status));
-            const out=(data && (data.rewrite||data.text||data.result)) || '(No rewrite)';
+            const out=(data && (data.rewrite||data.rewritten||data.text||data.result)) || '(No rewrite)';
             rewriteBlock.textContent=out;
           } catch(e){ rewriteBlock.textContent='Rewrite failed: '+e.message; }
         }
@@ -2534,13 +2571,20 @@
           if(e.key==='Enter' && (e.metaKey||e.ctrlKey)){ e.preventDefault(); const v=input.value; input.value=''; doSend(v); }
         });
         clearBtn?.addEventListener('click', ()=>{
-          if(!confirm('Clear chat?')) return; window.__assistantHistory=[]; persist(); const log=document.getElementById('assistant-log'); if(log) log.innerHTML=''; rewriteBlock.classList.add('hidden'); tokensEl && (tokensEl.textContent='tokens: –');
+          if(!confirm('Clear chat?')) return;
+          window.__assistantHistory=[]; persist();
+          const log=document.getElementById('assistant-log'); if(log) log.innerHTML='';
+          rewriteBlock.classList.add('hidden');
+          if(tokensEl) tokensEl.textContent='tokens: –';
         });
         exportBtn?.addEventListener('click', ()=>{
           try { const blob=new Blob([JSON.stringify(window.__assistantHistory,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='assistant_history.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),500); } catch{}
         });
         retryBtn?.addEventListener('click', ()=>{
-          const last=retryBtn.dataset.retryLast||''; if(!last) return; retryBtn.classList.add('hidden'); doSend(last); });
+          const last=retryBtn.dataset.retryLast||''; if(!last) return;
+            retryBtn.classList.add('hidden');
+            doSend(last);
+        });
         rewriteBtn?.addEventListener('click', ()=>{
           // rewrite latest assistant message
           const lastAssist=[...window.__assistantHistory].reverse().find(m=> m.role==='assistant');
