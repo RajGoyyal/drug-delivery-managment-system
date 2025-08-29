@@ -445,6 +445,9 @@
           <div id="insights-adherence" class="bg-slate-900/40 border border-slate-700 rounded p-4 space-y-3">
             <h3 class="text-xs uppercase tracking-wide text-slate-400 flex items-center gap-2">Adherence <button data-explain-adherence class="text-[10px] px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Explain</button></h3>
             <div id="adherence-summary" class="text-slate-300"></div>
+            <div class="flex gap-2 pt-1">
+              <button id="btn-explain-adherence" class="text-[10px] px-2 py-0.5 rounded bg-indigo-600/20 text-indigo-300 border border-indigo-600/40 hover:bg-indigo-600/30">Explain</button>
+            </div>
             <ul id="risk-patients" class="space-y-1"></ul>
           </div>
           <div id="insights-inventory" class="bg-slate-900/40 border border-slate-700 rounded p-4 space-y-3">
@@ -477,11 +480,26 @@
           </div>
           <h4 class="text-xs font-semibold text-slate-400 tracking-wide pt-2 border-t border-slate-700">Free-form Assistant Chat</h4>
           <div id="ai-chat-log" class="space-y-2 max-h-64 overflow-auto soft-scroll bg-slate-900/40 border border-slate-700 rounded p-3 text-sm"></div>
+          <div class="flex flex-wrap gap-2 mt-2 text-[10px]">
+            <label class="flex items-center gap-1">W <input id="ai-img-width" type="number" min="64" max="1024" value="512" class="w-16 bg-slate-800 border border-slate-600 rounded px-1 py-0.5" /></label>
+            <label class="flex items-center gap-1">H <input id="ai-img-height" type="number" min="64" max="1024" value="512" class="w-16 bg-slate-800 border border-slate-600 rounded px-1 py-0.5" /></label>
+            <select id="ai-img-style" class="bg-slate-800 border border-slate-600 rounded px-2 py-1">
+              <option value="cool">Cool</option>
+              <option value="warm">Warm</option>
+              <option value="mono">Mono</option>
+            </select>
+            <button id="ai-rewrite-btn" class="ml-auto px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600">Rewrite Last</button>
+            <select id="ai-rewrite-mode" class="bg-slate-800 border border-slate-600 rounded px-2 py-1">
+              <option value="simplify">Simplify</option>
+              <option value="bulletize">Bulletize</option>
+            </select>
+          </div>
+          <div id="ai-image-gallery" class="grid grid-cols-2 gap-2 mt-3"></div>
           <form id="ai-chat-form" class="flex gap-2">
-            <input id="ai-chat-input" placeholder="Chat about adherence, stock, risks…" class="flex-1 px-3 py-2 rounded bg-slate-700 border border-slate-600 text-sm placeholder-slate-400" />
+            <input id="ai-chat-input" placeholder="Chat or /img prompt (e.g. /img adherence trend icon)…" class="flex-1 px-3 py-2 rounded bg-slate-700 border border-slate-600 text-sm placeholder-slate-400" />
             <button class="px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm disabled:opacity-50" id="ai-chat-send">Send</button>
           </form>
-          <div id="ai-chat-hint" class="text-[11px] text-slate-500">Chat provides heuristic responses when no AI key is set.</div>
+          <div id="ai-chat-hint" class="text-[11px] text-slate-500">Use /img to generate a placeholder image (no external AI key needed).</div>
         </div>
       </section>
 
@@ -1396,6 +1414,8 @@
           toast('Delivery scheduled','success');
           await Promise.all([refreshDeliveries(), refreshDrugs()]);
           loadStats();
+          // Refresh insights to update adherence ratios / recommendations
+          try { fetchInsights(); fetchInsightsSummary(); } catch{}
           if(typeof inventoryBooted !== 'undefined' && inventoryBooted && typeof loadInventoryData==='function'){
             try { await loadInventoryData(); } catch{}
           }
@@ -1634,7 +1654,7 @@
     function pager(total,page,pageSize,el,prefix,renderFn){ el.innerHTML=''; const pages=Math.max(1,Math.ceil(total/pageSize)); if(page>pages){ page=pages; } overviewState[prefix].page=page; if(pages<=1) return; const mk=(p,l)=>{ const b=document.createElement('button'); b.textContent=l; b.className='px-2 py-0.5 rounded border text-[10px] '+(p===page?'bg-indigo-600 border-indigo-600 text-white':'border-slate-600 hover:bg-slate-700'); b.onclick=()=>{ overviewState[prefix].page=p; renderFn(); }; return b; }; el.append(mk(Math.max(1,page-1),'‹')); for(let p=1;p<=pages && p<=6;p++){ if(p===6 && pages>6){ const more=document.createElement('span'); more.textContent='…'; more.className='px-1 text-slate-500'; el.append(more); el.append(mk(pages,pages)); break; } el.append(mk(p,p)); } el.append(mk(Math.min(pages,page+1),'›')); }
     function updateCounts(){ ['patients','drugs','deliveries'].forEach(k=>{ const span=document.querySelector(`[data-count=${k}]`); if(span){ const data=window['__'+k]||[]; span.textContent=data.length; } }); }
     function sortIndicator(th,active,dir){ th.querySelectorAll('.sort-ind').forEach(e=>e.remove()); const span=document.createElement('span'); span.className='sort-ind ml-1 opacity-60'; if(active){ span.textContent= dir==='asc'? '▲':'▼'; } th.append(span); }
-    function renderAllPatients(){ const body=document.getElementById('all-patients-body'); if(!body) return; const empty=document.getElementById('all-patients-empty'); const info=document.getElementById('all-patients-info'); const pagerEl=document.getElementById('all-patients-pager'); const st=overviewState.patients; st.pageSize=Number(document.getElementById('all-patients-pagesize').value)||25; st.search=(document.getElementById('all-patients-search').value||'').toLowerCase(); let rows=(window.__patients||[]).filter(p=> !st.search || p.name.toLowerCase().includes(st.search) || (p.condition||'').toLowerCase().includes(st.search) || String(p.id)===st.search); rows=applySort(rows, st.sortKey, st.sortDir); const total=rows.length; rows=slicePage(rows, st.page, st.pageSize); body.innerHTML=rows.map(p=>`<tr class='hover:bg-slate-700/40 transition'><td class='px-3 py-2 font-medium text-slate-300'>${p.id}</td><td class='px-3 py-2'>${escapeHTML(p.name)}</td><td class='px-3 py-2 text-slate-400'>${p.age??'—'}</td><td class='px-3 py-2 text-slate-400'>${p.condition? escapeHTML(p.condition):'—'}</td><td class='px-3 py-2 text-slate-400'>${p.contact? escapeHTML(p.contact):'—'}</td></tr>`).join(''); empty.textContent= total? '' : 'No patients found'; info.textContent= total? `Showing ${(st.page-1)*st.pageSize+1}-${Math.min(total, st.page*st.pageSize)} of ${total}` : ''; pager(total, st.page, st.pageSize, pagerEl, 'patients', renderAllPatients); updateCounts(); document.querySelectorAll('#tbl-all-patients thead th').forEach(th=> sortIndicator(th, th.dataset.sort===st.sortKey, st.sortDir)); }
+  function renderAllPatients(){ const body=document.getElementById('all-patients-body'); if(!body) return; const empty=document.getElementById('all-patients-empty'); const info=document.getElementById('all-patients-info'); const pagerEl=document.getElementById('all-patients-pager'); const st=overviewState.patients; st.pageSize=Number(document.getElementById('all-patients-pagesize').value)||25; st.search=(document.getElementById('all-patients-search').value||'').toLowerCase(); let rows=(window.__patients||[]).filter(p=> !st.search || p.name.toLowerCase().includes(st.search) || (p.condition||'').toLowerCase().includes(st.search) || String(p.id)===st.search); rows=applySort(rows, st.sortKey, st.sortDir); const total=rows.length; rows=slicePage(rows, st.page, st.pageSize); body.innerHTML=rows.map(p=>`<tr class='hover:bg-slate-700/40 transition group'><td class='px-3 py-2 font-medium text-slate-300'>${p.id}</td><td class='px-3 py-2 flex items-center gap-2'>${escapeHTML(p.name)}<button data-patient-ai='${p.id}' title='AI summary' class='opacity-0 group-hover:opacity-100 transition text-[10px] px-1.5 py-0.5 rounded bg-indigo-600/20 text-indigo-300 border border-indigo-600/40 hover:bg-indigo-600/30'>AI</button></td><td class='px-3 py-2 text-slate-400'>${p.age??'—'}</td><td class='px-3 py-2 text-slate-400'>${p.condition? escapeHTML(p.condition):'—'}</td><td class='px-3 py-2 text-slate-400'>${p.contact? escapeHTML(p.contact):'—'}</td></tr>`).join(''); empty.textContent= total? '' : 'No patients found'; info.textContent= total? `Showing ${(st.page-1)*st.pageSize+1}-${Math.min(total, st.page*st.pageSize)} of ${total}` : ''; pager(total, st.page, st.pageSize, pagerEl, 'patients', renderAllPatients); updateCounts(); document.querySelectorAll('#tbl-all-patients thead th').forEach(th=> sortIndicator(th, th.dataset.sort===st.sortKey, st.sortDir)); }
     function renderAllDeliveries(){ const body=document.getElementById('all-deliveries-body'); if(!body) return; const empty=document.getElementById('all-deliveries-empty'); const info=document.getElementById('all-deliveries-info'); const pagerEl=document.getElementById('all-deliveries-pager'); const st=overviewState.deliveries; st.pageSize=Number(document.getElementById('all-deliveries-pagesize')?.value)||25; st.search=(document.getElementById('all-deliveries-search')?.value||'').toLowerCase(); st.dateFrom=document.getElementById('deliveries-date-from')?.value||''; st.dateTo=document.getElementById('deliveries-date-to')?.value||''; const patientMap=new Map((window.__patients||[]).map(p=>[p.id,p])); const drugMap=new Map((window.__drugs||[]).map(d=>[d.id,d])); let rows=(window.__deliveries||[]).map(d=> ({...d,_patient:patientMap.get(d.patient_id), _drug:drugMap.get(d.drug_id)})); if(st.search){ rows=rows.filter(d=> String(d.id)===st.search || d.status.toLowerCase().includes(st.search) || (d.notes||'').toLowerCase().includes(st.search) || (d._patient && d._patient.name.toLowerCase().includes(st.search)) || (d._drug && d._drug.name.toLowerCase().includes(st.search)) ); } if(st.dateFrom){ rows=rows.filter(r=> r.scheduled_for && r.scheduled_for.substring(0,10)>=st.dateFrom); } if(st.dateTo){ rows=rows.filter(r=> r.scheduled_for && r.scheduled_for.substring(0,10)<=st.dateTo); } rows=applySort(rows, st.sortKey, st.sortDir); const total=rows.length; rows=slicePage(rows, st.page, st.pageSize); body.innerHTML=rows.map(d=>{ const sel= st.selected.has(d.id); const when=d.scheduled_for? new Date(d.scheduled_for): null; let rel=''; if(when){ const diff= Date.now()- when.getTime(); const mins=Math.round(diff/60000); if(Math.abs(mins)<60){ rel=`${mins>0?mins+'m ago':'in '+(-mins)+'m'}`;} else { const hrs=Math.round(mins/60); if(Math.abs(hrs)<24){ rel=`${hrs>0?hrs+'h ago':'in '+(-hrs)+'h'}`;} else { const days=Math.round(hrs/24); rel=`${days>0?days+'d ago':'in '+(-days)+'d'}`; } } } return `<tr class='hover:bg-slate-700/40 transition ${sel?'bg-indigo-600/10':''}'>`+
       `<td class='px-3 py-2'><input type='checkbox' data-row-select='${d.id}' class='accent-indigo-500' ${sel?'checked':''} /></td>`+
       `<td class='px-3 py-2 font-medium text-slate-300'>${d.id}</td>`+
@@ -2012,10 +2032,10 @@
       document.getElementById('inv-batch-cancel').addEventListener('click', closeBatchModal);
       document.getElementById('inv-remove-close').addEventListener('click', closeRemoveModal);
       document.getElementById('inv-remove-cancel').addEventListener('click', closeRemoveModal);
-      document.getElementById('inv-batch-form').addEventListener('submit', async e=>{
-  e.preventDefault(); const id=Number(document.getElementById('inv-batch-drug-id').value); const qty=parseInt(document.getElementById('inv-batch-quantity').value,10); const mfg=document.getElementById('inv-batch-mfg_date').value; const exp=document.getElementById('inv-batch-exp_date').value; const errEl=document.getElementById('inv-batch-error'); errEl.textContent=''; if(isNaN(qty)||qty<=0){ errEl.textContent='Quantity must be positive'; return; } if(mfg && exp && exp < mfg){ errEl.textContent='Expiry must be after manufacturing date'; return; } const spin=document.getElementById('inv-batch-spin'); spin.classList.remove('hidden'); try { await call('/api/drug_batches',{method:'POST', body: JSON.stringify({drug_id:id, batch_no:document.getElementById('inv-batch-batch_no').value||null, isbn:document.getElementById('inv-batch-isbn').value||null, producer:document.getElementById('inv-batch-producer').value||null, transporter:document.getElementById('inv-batch-transporter').value||null, mfg_date:mfg||null, exp_date:exp||null, quantity:qty, notes:document.getElementById('inv-batch-notes').value||null })}); toast('Batch added','success'); await loadInventoryData(); fetchInventoryTransactions(); closeBatchModal(); const df=document.getElementById('drug-form'); if(df){ df.reset(); } } catch(err){ console.error(err); errEl.textContent='Failed to add batch'; } finally { spin.classList.add('hidden'); } });
+    document.getElementById('inv-batch-form').addEventListener('submit', async e=>{
+  e.preventDefault(); const id=Number(document.getElementById('inv-batch-drug-id').value); const qty=parseInt(document.getElementById('inv-batch-quantity').value,10); const mfg=document.getElementById('inv-batch-mfg_date').value; const exp=document.getElementById('inv-batch-exp_date').value; const errEl=document.getElementById('inv-batch-error'); errEl.textContent=''; if(isNaN(qty)||qty<=0){ errEl.textContent='Quantity must be positive'; return; } if(mfg && exp && exp < mfg){ errEl.textContent='Expiry must be after manufacturing date'; return; } const spin=document.getElementById('inv-batch-spin'); spin.classList.remove('hidden'); try { await call('/api/drug_batches',{method:'POST', body: JSON.stringify({drug_id:id, batch_no:document.getElementById('inv-batch-batch_no').value||null, isbn:document.getElementById('inv-batch-isbn').value||null, producer:document.getElementById('inv-batch-producer').value||null, transporter:document.getElementById('inv-batch-transporter').value||null, mfg_date:mfg||null, exp_date:exp||null, quantity:qty, notes:document.getElementById('inv-batch-notes').value||null })}); toast('Batch added','success'); await loadInventoryData(); fetchInventoryTransactions(); try { fetchInsights(); fetchInsightsSummary(); } catch{} closeBatchModal(); const df=document.getElementById('drug-form'); if(df){ df.reset(); } } catch(err){ console.error(err); errEl.textContent='Failed to add batch'; } finally { spin.classList.add('hidden'); } });
       document.getElementById('inv-remove-form').addEventListener('submit', async e=>{
-        e.preventDefault(); const id=Number(document.getElementById('inv-remove-drug-id').value); const qty=parseInt(document.getElementById('inv-remove-quantity').value,10); const reason=document.getElementById('inv-remove-reason').value.trim(); const errEl=document.getElementById('inv-remove-error'); errEl.textContent=''; if(isNaN(qty)||qty<=0){ errEl.textContent='Quantity must be positive'; return; } if(!reason){ errEl.textContent='Reason required'; return; } const spin=document.getElementById('inv-remove-spin'); spin.classList.remove('hidden'); try { await call('/api/drug_removals',{method:'POST', body: JSON.stringify({drug_id:id, batch_no:document.getElementById('inv-remove-batch_no').value||null, reason, quantity:qty, notes:document.getElementById('inv-remove-notes').value||null })}); toast('Stock removed','success'); await loadInventoryData(); fetchInventoryTransactions(); closeRemoveModal(); } catch(err){ console.error(err); errEl.textContent= (err && err.detail) || 'Removal failed'; } finally { spin.classList.add('hidden'); } });
+        e.preventDefault(); const id=Number(document.getElementById('inv-remove-drug-id').value); const qty=parseInt(document.getElementById('inv-remove-quantity').value,10); const reason=document.getElementById('inv-remove-reason').value.trim(); const errEl=document.getElementById('inv-remove-error'); errEl.textContent=''; if(isNaN(qty)||qty<=0){ errEl.textContent='Quantity must be positive'; return; } if(!reason){ errEl.textContent='Reason required'; return; } const spin=document.getElementById('inv-remove-spin'); spin.classList.remove('hidden'); try { await call('/api/drug_removals',{method:'POST', body: JSON.stringify({drug_id:id, batch_no:document.getElementById('inv-remove-batch_no').value||null, reason, quantity:qty, notes:document.getElementById('inv-remove-notes').value||null })}); toast('Stock removed','success'); await loadInventoryData(); fetchInventoryTransactions(); try { fetchInsights(); fetchInsightsSummary(); } catch{} closeRemoveModal(); } catch(err){ console.error(err); errEl.textContent= (err && err.detail) || 'Removal failed'; } finally { spin.classList.add('hidden'); } });
   // override activateTab to ensure loadInventoryData only once until manual refresh
   const origActivateInv=activateTab; // inventoryBooted defined globally at script top
   activateTab=function(tab){ origActivateInv(tab); if(tab==='inventory'){ if(!inventoryBooted){ inventoryBooted=true; loadInventoryData(); fetchInventoryTransactions(); } } };
@@ -2044,17 +2064,76 @@
     boot();
     // --- AI Insights Feature ---
         function safeTextify(v){
+          // Pretty + safe stringify for arbitrary values (avoids raw [object Object])
           if(v===null || v===undefined) return '';
-          const t=typeof v;
-          if(t==='string' || t==='number' || t==='boolean') return String(v);
-          try { return JSON.stringify(v, null, 2); } catch(e){ return String(v); }
+          const stripMd = (s)=> s.replace(/\*\*(.+?)\*\*/g,'$1').replace(/__(.+?)__/g,'$1').replace(/\*(.+?)\*/g,'$1');
+          const primitive = (x)=> (typeof x==='string' || typeof x==='number' || typeof x==='boolean');
+          // Fast path strings – also try to pretty print compact JSON
+          if(typeof v === 'string'){
+            const trimmed=v.trim();
+            if((trimmed.startsWith('{')||trimmed.startsWith('[')) && trimmed.length < 6000){
+              try { const parsed = JSON.parse(trimmed); return cleanupArtifacts(stripMd(prettyFormat(parsed))); } catch{/* fallthrough */}
+            }
+            return cleanupArtifacts(stripMd(v));
+          }
+          if(primitive(v)) return String(v);
+          try { return cleanupArtifacts(stripMd(prettyFormat(v))); } catch(e){ try { return cleanupArtifacts(stripMd(JSON.stringify(v))); } catch { return String(v); } }
+        }
+        function prettyFormat(obj, opts){
+          opts = opts || {};
+            const maxDepth = opts.maxDepth || 4;
+            const maxItems = opts.maxItems || 40;
+            const seen = new WeakSet();
+            function fmt(x, depth){
+              if(x===null) return 'null';
+              const t=typeof x;
+              if(t==='string') return x.length>240? JSON.stringify(x.slice(0,240)+'…') : JSON.stringify(x);
+              if(t==='number' || t==='boolean') return String(x);
+              if(t==='function') return '[Function]';
+              if(t==='object'){
+                if(seen.has(x)) return '[Circular]';
+                seen.add(x);
+                if(Array.isArray(x)){
+                  if(!x.length) return '[]';
+                  if(depth>=maxDepth) return `[Array(${x.length})]`;
+                  const items = x.slice(0,maxItems).map(i=>fmt(i, depth+1));
+                  if(x.length>maxItems) items.push('…');
+                  return '[\n'+ indent(items.join(',\n')) +'\n]';
+                }
+                // Plain object
+                const keys = Object.keys(x);
+                if(!keys.length) return '{}';
+                if(depth>=maxDepth) return `{… ${keys.length} keys}`;
+                const out=[];
+                for(const k of keys.slice(0,maxItems)){
+                  try { out.push(JSON.stringify(k)+': '+fmt(x[k], depth+1)); } catch { out.push(JSON.stringify(k)+': [Error]'); }
+                }
+                if(keys.length>maxItems) out.push('…');
+                return '{\n'+ indent(out.join(',\n')) +'\n}';
+              }
+              try { return JSON.stringify(x); } catch { return String(x); }
+            }
+            function indent(s){ return s.split(/\n/).map(l=>'  '+l).join('\n'); }
+            return fmt(obj,0);
+        }
+        function cleanupArtifacts(s){
+          if(!s) return s;
+          // Remove stray [object Object] tokens left from accidental coercions
+          s = s.replace(/\[object Object\]/g,'');
+          // Collapse bullet patterns like "*   text" -> "* text"
+          s = s.replace(/\*\s{2,}/g,'* ');
+          // Trim excessive internal whitespace sequences (>3 spaces)
+          s = s.replace(/ {3,}/g,'  ');
+          // Remove doubled blank lines (keep at most 1)
+          s = s.replace(/\n{3,}/g,'\n\n');
+          return s.trim();
         }
     async function fetchInsightsSummary(){
       const sumEl=document.getElementById('ai-summary'); const badge=document.getElementById('ai-badge');
       if(!sumEl) return;
       sumEl.innerHTML='<span class="spinner mr-3"></span>Generating summary…';
       try {
-        const res= await fetch(API_BASE+'/api/ai/summary');
+  const res= await fetch(API_BASE+'/api/ai/summary?ts='+(Date.now()));
         const data= await res.json();
         if(badge){ badge.textContent= data.ai? 'AI' : 'Heuristic'; badge.classList.toggle('bg-indigo-600', !!data.ai); badge.classList.toggle('text-white', !!data.ai); }
   sumEl.textContent = safeTextify(data.summary || '(No summary)');
@@ -2062,7 +2141,7 @@
     }
     async function fetchInsights(){
       try {
-        const r= await fetch(API_BASE+'/api/insights');
+  const r= await fetch(API_BASE+'/api/insights?ts='+(Date.now()));
         const d= await r.json();
         // Could render structured insights later (risk patients, inventory issues)
         window.__insights=d; renderStructuredInsights();
@@ -2074,7 +2153,18 @@
       // Adherence
       const adhEl=document.getElementById('adherence-summary');
       const riskUl=document.getElementById('risk-patients');
-      if(adhEl){ const a=data.adherence||{}; adhEl.textContent = a.overall_percent!=null? `Overall adherence: ${a.overall_percent}%` : 'No adherence data'; }
+      if(adhEl){
+        const a=data.adherence||{};
+        const primary = a.broad_percent ?? a.effective_percent ?? a.overall_percent;
+        if(primary!=null){
+          const parts=[];
+          if(a.overall_percent!=null) parts.push(`Overall: ${a.overall_percent}%`);
+          if(a.effective_percent!=null) parts.push(`Effective: ${a.effective_percent}%`);
+          if(a.broad_percent!=null) parts.push(`Broad: ${a.broad_percent}%`);
+          const raw = `D ${a.delivered||0} / M ${a.missed||0} / P ${a.pending||0} / C ${a.cancelled||0}` + (a.overdue_pending? ` / O ${a.overdue_pending}`:'');
+          adhEl.innerHTML = `<span class='font-medium text-indigo-300'>Real adherence: ${primary}%</span><span class='block text-[11px] mt-1 text-slate-400'>${parts.join(' | ')}</span><span class='ml-0 block text-[11px] text-slate-500'>(${raw})</span>`;
+        } else adhEl.textContent='No adherence data';
+      }
       if(riskUl){
         const rp=(data.adherence && data.adherence.risk_patients)||[];
         if(!rp.length){ riskUl.innerHTML='<li class="text-slate-500 text-[11px]">No risk patients in horizon.</li>'; }
@@ -2095,7 +2185,56 @@
         else { recOl.innerHTML= recs.map((r,idx)=>`<li class='flex items-start gap-2'><span class='flex-1'>${escapeHTML(r)}</span><button class='mt-0.5 text-[10px] px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600' data-explain-rec='${idx}'>Ask</button></li>`).join(''); }
       }
       const disc=document.getElementById('insights-disclaimer'); if(disc){ disc.textContent = data.disclaimer||''; }
+        // attach AI patient buttons
+        document.querySelectorAll('[data-patient-ai]').forEach(btn=>{
+          if(btn.dataset.bound) return; btn.dataset.bound='1';
+          btn.addEventListener('click', async (e)=>{
+            e.stopPropagation(); const id=btn.getAttribute('data-patient-ai'); if(!id) return;
+            showInlineModal('Patient AI Summary', `<div class='text-[12px] text-slate-400'>Loading…</div>`);
+            try{ const r= await fetch(API_BASE+`/api/ai/patient_summary?patient_id=${id}&ts=${Date.now()}`); const d= await r.json(); const safe = (s)=>escapeHTML(String(s||''));
+              const dl=d.recent_deliveries||[]; const rows=dl.slice(0,12).map(x=>`<tr><td class='px-2 py-1 text-[11px]'>${x.id}</td><td class='px-2 py-1 text-[11px]'>${x.scheduled_for}</td><td class='px-2 py-1 text-[11px]'>${x.status}</td><td class='px-2 py-1 text-[11px]'>${x.quantity}</td></tr>`).join('')||'<tr><td class="text-[11px] px-2 py-1 text-slate-500" colspan=4>No recent</td></tr>';
+              showInlineModal('Patient AI Summary', `<div class='space-y-3'>
+                <div class='text-sm font-medium text-slate-200'>${safe(d.patient?.name)} <span class='text-xs text-slate-400'>#${safe(d.patient?.id)}</span></div>
+                <div class='text-[11px] text-slate-400'>${safe(d.summary)}</div>
+                <div class='text-[11px] text-slate-400'>30d Adherence: ${d.adherence_percent_30d??'—'}%</div>
+                <table class='w-full border border-slate-700 rounded text-[11px]'><thead><tr class='bg-slate-800'><th class='px-2 py-1 text-left'>ID</th><th class='px-2 py-1 text-left'>When</th><th class='px-2 py-1 text-left'>Status</th><th class='px-2 py-1 text-left'>Qty</th></tr></thead><tbody>${rows}</tbody></table>
+              </div>`);
+            }catch(err){ showInlineModal('Patient AI Summary', `<div class='text-[11px] text-rose-400'>Failed: ${escapeHTML(String(err))}</div>`); }
+          });
+        });
     }
+
+      // Simple inline modal helper
+      function showInlineModal(title, html){
+        let host=document.getElementById('inline-modal-host');
+        if(!host){ host=document.createElement('div'); host.id='inline-modal-host'; host.className='fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4'; document.body.append(host); }
+        host.innerHTML=`<div class='bg-slate-800 border border-slate-700 rounded max-w-lg w-full shadow-lg'>
+          <div class='flex items-center justify-between px-4 py-2 border-b border-slate-700'>
+            <h2 class='text-sm font-medium text-slate-200'>${title}</h2>
+            <button id='inline-modal-close' class='text-slate-400 hover:text-slate-200 text-xs'>✕</button>
+          </div>
+          <div class='p-4 max-h-[60vh] overflow-y-auto text-sm'>${html}</div>
+        </div>`;
+        host.querySelector('#inline-modal-close').onclick=()=> host.remove();
+      }
+
+      // Adherence explain button
+      document.addEventListener('click', async (e)=>{
+        const btn = e.target; if(!(btn instanceof HTMLElement)) return;
+        if(btn.id==='btn-explain-adherence'){
+          showInlineModal('Adherence Explanation', `<div class='text-[12px] text-slate-400'>Loading…</div>`);
+          try{ const r= await fetch(API_BASE+`/api/ai/explain/adherence?ts=${Date.now()}`); const d= await r.json(); const safe=(s)=>escapeHTML(String(s||''));
+            const counts=d.counts||{}; const rates=d.rates||{};
+            showInlineModal('Adherence Explanation', `<div class='space-y-3 text-[12px]'>
+              <div class='text-slate-300 whitespace-pre-line'>${safe(d.explanation)}</div>
+              <div class='grid grid-cols-2 gap-2 text-[11px]'>
+                ${Object.entries(counts).map(([k,v])=>`<div class='bg-slate-800/60 border border-slate-700 rounded px-2 py-1'><span class='uppercase tracking-wide text-[9px] text-slate-500'>${k}</span><div class='text-slate-200'>${v??'—'}</div></div>`).join('')}
+              </div>
+              <div class='flex flex-wrap gap-2'>${Object.entries(rates).filter(([,v])=>v!=null).map(([k,v])=>`<span class='text-[10px] px-2 py-1 rounded bg-indigo-600/20 text-indigo-300 border border-indigo-600/30'>${k.replace('_percent','')}: ${v}%</span>`).join('')}</div>
+            </div>`);
+          }catch(err){ showInlineModal('Adherence Explanation', `<div class='text-[11px] text-rose-400'>Failed: ${escapeHTML(String(err))}</div>`); }
+        }
+      });
     function crossExamine(kind, id){
       const data=window.__insights||{};
       let question='';
@@ -2122,9 +2261,134 @@
   const item=document.createElement('div');
       item.className='flex items-start gap-2';
   const badge= role==='user'? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-300';
-  const renderedMsg = safeTextify(text);
-  item.innerHTML=`<span class='text-[10px] px-2 py-1 rounded ${badge} capitalize'>${role}</span><div class='flex-1 whitespace-pre-wrap text-slate-300 text-sm'>${escapeHTML(renderedMsg)}</div>`;
+  // Structured rendering attempt (JSON -> graphical) for assistant messages only
+  const container=document.createElement('div');
+  container.className='flex-1 text-slate-300 text-sm';
+  let structured=false;
+  if(role==='assistant'){
+    const structEl = tryRenderStructured(text);
+    if(structEl){
+      structured=true;
+      const wrap=document.createElement('div');
+      wrap.className='space-y-2';
+      const toolbar=document.createElement('div');
+      toolbar.className='flex items-center gap-2 text-[10px] text-slate-500';
+      const toggleBtn=document.createElement('button');
+      toggleBtn.textContent='Raw';
+      toggleBtn.className='px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 border border-slate-600';
+      const viewRaw=document.createElement('pre');
+      viewRaw.className='hidden whitespace-pre-wrap bg-slate-800/60 border border-slate-700 rounded p-2 text-[11px] overflow-x-auto';
+      viewRaw.textContent=safeTextify(text);
+      toggleBtn.addEventListener('click',()=>{
+        const rawShown=!viewRaw.classList.contains('hidden');
+        if(rawShown){ viewRaw.classList.add('hidden'); structEl.classList.remove('hidden'); toggleBtn.textContent='Raw'; }
+        else { viewRaw.classList.remove('hidden'); structEl.classList.add('hidden'); toggleBtn.textContent='Structured'; }
+      });
+      toolbar.appendChild(toggleBtn);
+      wrap.appendChild(toolbar);
+      wrap.appendChild(structEl);
+      wrap.appendChild(viewRaw);
+      container.appendChild(wrap);
+    }
+  }
+  if(!structured){
+    const renderedMsg = safeTextify(text);
+    const div=document.createElement('div');
+    div.className='whitespace-pre-wrap';
+    div.textContent=renderedMsg; // already cleaned -> safe as textContent
+    container.appendChild(div);
+  }
+  item.innerHTML=`<span class='text-[10px] px-2 py-1 rounded ${badge} capitalize'>${role}</span>`;
+  item.appendChild(container);
       log.append(item); log.scrollTop=log.scrollHeight;
+    }
+    // Attempt to parse JSON and return a structured DOM element (table / recursive tree). Returns null if not JSON.
+    function tryRenderStructured(raw){
+      if(typeof raw !== 'string') return null;
+      const trimmed = raw.trim();
+      if(!(trimmed.startsWith('{') || trimmed.startsWith('['))) return null;
+      let data; try { data=JSON.parse(trimmed); } catch{ return null; }
+      // Recursive renderer
+      const seen=new WeakSet();
+      function renderVal(val, depth){
+        if(val===null) return spanAtom('null','text-slate-500');
+        if(typeof val==='string') return spanAtom(val.length>260? val.slice(0,260)+'…' : val,'text-emerald-300');
+        if(typeof val==='number') return spanAtom(String(val),'text-indigo-300');
+        if(typeof val==='boolean') return spanAtom(String(val),'text-orange-300');
+        if(typeof val==='object'){
+          if(seen.has(val)) return spanAtom('[Circular]','text-rose-400');
+          seen.add(val);
+          if(Array.isArray(val)){
+            if(val.length===0) return spanAtom('[]','text-slate-500');
+            // Array of homogenous objects -> table preview
+            const objs = val.filter(v=> v && typeof v==='object' && !Array.isArray(v));
+            const primitiveArr = val.every(v=> v===null || ['string','number','boolean'].includes(typeof v));
+            if(objs.length>=1 && objs.length===val.length){
+              const allKeys = Array.from(new Set(objs.flatMap(o=> Object.keys(o)))).slice(0,12);
+              const table=document.createElement('table');
+              table.className='w-full border border-slate-700 rounded text-[11px]';
+              const thead=document.createElement('thead');
+              thead.innerHTML='<tr class="bg-slate-800">'+allKeys.map(k=>`<th class='px-2 py-1 text-left font-medium text-slate-300'>${escapeHTML(k)}</th>`).join('')+'</tr>';
+              table.appendChild(thead);
+              const tbody=document.createElement('tbody');
+              val.slice(0,40).forEach(row=>{
+                const tr=document.createElement('tr'); tr.className='border-t border-slate-700/60';
+                allKeys.forEach(k=>{
+                  const td=document.createElement('td'); td.className='px-2 py-1 text-slate-400 align-top max-w-[220px]';
+                  const cell=row[k];
+                  if(cell && typeof cell==='object') td.textContent = JSON.stringify(cell).slice(0,80);
+                  else td.textContent = typeof cell==='string'? cell.slice(0,120) : (cell===null? '' : String(cell));
+                  tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+              });
+              if(val.length>40){
+                const tr=document.createElement('tr');
+                const td=document.createElement('td'); td.colSpan=allKeys.length; td.className='px-2 py-1 text-center text-[10px] text-slate-500';
+                td.textContent = `… ${val.length-40} more rows truncated`; tr.appendChild(td); tbody.appendChild(tr);
+              }
+              table.appendChild(tbody);
+              return table;
+            }
+            if(primitiveArr){
+              const ul=document.createElement('ul'); ul.className='list-disc pl-4 space-y-0.5';
+              val.slice(0,50).forEach(x=> { const li=document.createElement('li'); li.className='text-[11px] text-slate-400'; li.textContent=String(x); ul.appendChild(li); });
+              if(val.length>50){ const li=document.createElement('li'); li.className='text-[10px] text-slate-500'; li.textContent=`… ${val.length-50} more`; ul.appendChild(li);}            
+              return ul;
+            }
+            // Fallback: collapsible list
+            const details=document.createElement('details'); if(depth<1) details.open=true;
+            const summary=document.createElement('summary'); summary.className='cursor-pointer text-[11px] text-slate-400'; summary.textContent=`Array(${val.length})`;
+            details.appendChild(summary);
+            val.slice(0,60).forEach((el,i)=>{
+              const div=document.createElement('div'); div.className='ml-3 border-l border-slate-700 pl-2 mt-1';
+              div.appendChild(renderVal(el, depth+1)); details.appendChild(div);
+            });
+            if(val.length>60){ const more=document.createElement('div'); more.className='ml-3 text-[10px] text-slate-500'; more.textContent=`… ${val.length-60} more`; details.appendChild(more);} 
+            return details;
+          }
+          // Plain object
+          const keys = Object.keys(val);
+          if(!keys.length) return spanAtom('{}','text-slate-500');
+          const details=document.createElement('details'); if(depth<1) details.open=true;
+          const summary=document.createElement('summary'); summary.className='cursor-pointer text-[11px] text-slate-400'; summary.textContent=`Object(${keys.length})`;
+          details.appendChild(summary);
+          keys.slice(0,80).forEach(k=>{
+            const row=document.createElement('div'); row.className='ml-3 border-l border-slate-700 pl-2 mt-1 flex gap-2';
+            const keySpan=document.createElement('span'); keySpan.className='text-indigo-300 text-[11px] min-w-[90px] truncate'; keySpan.textContent=k+':';
+            row.appendChild(keySpan);
+            const valWrap=document.createElement('div'); valWrap.className='flex-1 text-[11px]';
+            valWrap.appendChild(renderVal(val[k], depth+1));
+            row.appendChild(valWrap);
+            details.appendChild(row);
+          });
+          if(keys.length>80){ const more=document.createElement('div'); more.className='ml-3 text-[10px] text-slate-500'; more.textContent=`… ${keys.length-80} more`; details.appendChild(more);} 
+          return details;
+        }
+        return spanAtom(String(val),'text-slate-400');
+      }
+      function spanAtom(text, cls){ const s=document.createElement('span'); s.className=cls; s.textContent=text; return s; }
+      return renderVal(data,0);
     }
     async function sendChat(message){
       const btn=document.getElementById('ai-chat-send');
@@ -2202,8 +2466,27 @@
     });
     const chatForm=document.getElementById('ai-chat-form');
     if(chatForm){
-      chatForm.addEventListener('submit', e=>{ e.preventDefault(); const input=document.getElementById('ai-chat-input'); const v=(input.value||'').trim(); if(!v){ return; } input.value=''; sendChat(v); });
+      chatForm.addEventListener('submit', e=>{ e.preventDefault(); const input=document.getElementById('ai-chat-input'); const v=(input.value||'').trim(); if(!v){ return; } input.value=''; if(v.startsWith('/img ')){ generateImage(v.substring(5).trim()); } else { sendChat(v); } });
     }
+    async function generateImage(prompt){
+      const gal=document.getElementById('ai-image-gallery'); if(!gal) return;
+      const w=parseInt(document.getElementById('ai-img-width')?.value||'512',10);
+      const h=parseInt(document.getElementById('ai-img-height')?.value||'512',10);
+      const style=document.getElementById('ai-img-style')?.value||'cool';
+      const holder=document.createElement('div'); holder.className='relative rounded overflow-hidden bg-slate-700 flex items-center justify-center text-[10px] text-slate-300'; holder.style.aspectRatio = (w&&h)? `${w}/${h}` : '1/1'; holder.textContent='Generating…'; gal.prepend(holder);
+      try {
+        const res= await fetch(API_BASE+'/api/ai/image',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({prompt, width:w, height:h, style})});
+        const data= await res.json();
+        if(!res.ok){ holder.textContent='Error'; return; }
+        const img=document.createElement('img'); img.src=data.image; img.alt=prompt; img.className='w-full h-full object-cover'; holder.textContent=''; holder.appendChild(img); const cap=document.createElement('div'); cap.className='absolute bottom-0 left-0 right-0 bg-black/40 text-[9px] px-1 py-0.5 truncate'; cap.textContent=`${prompt} (${data.style||style})`; holder.appendChild(cap);
+      } catch(err){ holder.textContent='Failed'; }
+    }
+    document.getElementById('ai-rewrite-btn')?.addEventListener('click', async ()=>{
+      const log=document.getElementById('ai-chat-log'); if(!log) return; const last=log.querySelector('div:last-child div.flex-1'); if(!last) return;
+      const original= last.textContent||''; const mode=document.getElementById('ai-rewrite-mode')?.value||'simplify';
+      const rewEl=document.createElement('div'); rewEl.className='text-[10px] text-slate-500'; rewEl.textContent='(rewriting…)'; last.parentElement?.appendChild(rewEl);
+      try { const res= await fetch(API_BASE+'/api/ai/rewrite',{method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text: original, mode})}); const data= await res.json(); if(res.ok && data.rewritten){ appendChat('assistant', data.rewritten); } else { appendChat('assistant', 'Rewrite failed'); } } catch(e){ appendChat('assistant','Rewrite error'); }
+    });
     // Lazy load when tab first opened
     const origActivate=activateTab;
     let insightsBoot=false;

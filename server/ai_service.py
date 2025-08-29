@@ -18,7 +18,7 @@ History item format expected by chat_reply:
 """
 from __future__ import annotations
 
-import os, json, logging, textwrap
+import os, json, logging, textwrap, io
 from typing import List, Dict, Any, TypedDict
 
 import requests
@@ -230,3 +230,106 @@ def answer_with_context(question: str, context: Dict[str, Any]) -> str:
     return (
         "(Heuristic RAG) Unable to use live AI. Question: '" + question[:160] + "'. "
         "Key context keys: " + ", ".join(sorted(context.keys())) + "." )
+
+
+def generate_image(prompt: str, width: int = 512, height: int = 512, style: str = "cool") -> str:
+    """Return a base64 PNG (without data URI prefix) for the prompt.
+
+    Resolution hints (width/height) are advisory; remote models may ignore them.
+    Priority:
+      1. If GOOGLE_GENAI_API_KEY is set and google.* genai library available, try real image model.
+      2. Fallback to lightweight procedural hash art (deterministic).
+
+    Environment variables (optional):
+      AI_IMAGE_MODEL  -> override image model (default gemini-2.5-flash-image-preview)
+    """
+    # 1. Remote model attempt
+    if ai_enabled():
+        model_name = os.environ.get("AI_IMAGE_MODEL", "gemini-2.5-flash-image-preview")
+        try:
+            # New SDK style (from google import genai)
+            try:
+                from google import genai as _genai  # type: ignore
+                client = _genai.Client(api_key=os.environ.get("GOOGLE_GENAI_API_KEY"))
+                resp = client.models.generate_content(
+                    model=model_name,
+                    contents=[prompt],
+                )
+                # Extract first image part
+                for p in getattr(resp, 'parts', []) or []:
+                    # New SDK provides as_image()
+                    try:
+                        if hasattr(p, 'as_image'):
+                            img_obj = p.as_image()
+                            if img_obj:  # PIL Image
+                                buf = io.BytesIO(); img_obj.save(buf, format='PNG')
+                                import base64 as _b64
+                                return _b64.b64encode(buf.getvalue()).decode('ascii')
+                    except Exception:
+                        continue
+            except Exception:
+                # Older SDK (google-generativeai)
+                try:
+                    import google.generativeai as genai  # type: ignore
+                    genai.configure(api_key=os.environ.get("GOOGLE_GENAI_API_KEY"))
+                    model = genai.GenerativeModel(model_name)
+                    resp = model.generate_content([prompt])
+                    # Parts may contain inline_data for images
+                    for cand in getattr(resp, 'candidates', []) or []:
+                        parts = getattr(getattr(cand, 'content', {}), 'parts', [])
+                        for part in parts:
+                            try:
+                                inline = getattr(part, 'inline_data', None) or (part.get('inline_data') if isinstance(part, dict) else None)
+                                if inline and isinstance(inline, dict):
+                                    data = inline.get('data')
+                                    if data:
+                                        return data  # already base64
+                            except Exception:
+                                continue
+                except Exception:
+                    pass  # fall back
+        except Exception:
+            # suppress and fall through to procedural
+            pass
+    # 2. Procedural fallback
+    try:
+        from PIL import Image, ImageDraw  # type: ignore
+        import hashlib, random, base64 as _b64, math
+        width = max(32, min(1024, int(width or 512)))
+        height = max(32, min(1024, int(height or 512)))
+        seed = int(hashlib.sha256(f"{prompt}|{width}|{height}|{style}".encode()).hexdigest(), 16) % (2**32-1)
+        rng = random.Random(seed)
+        img = Image.new("RGBA", (width, height), (0, 0, 0, 255))
+        palettes = {
+            'cool': ((30,58,138),(15,118,110)),
+            'warm': ((190,18,60),(245,158,11)),
+            'mono': ((51,65,85),(30,41,59)),
+        }
+        c1, c2 = palettes.get(style, palettes['cool'])
+        for y in range(height):
+            t = y/(height-1) if height>1 else 0
+            r = int(c1[0]*(1-t)+c2[0]*t)
+            g = int(c1[1]*(1-t)+c2[1]*t)
+            b = int(c1[2]*(1-t)+c2[2]*t)
+            for x in range(width):
+                img.putpixel((x,y),(r,g,b,255))
+        draw = ImageDraw.Draw(img, 'RGBA')
+        for _ in range(10):
+            cx = rng.randint(0,width); cy = rng.randint(0,height)
+            rad = rng.randint(8, max(12, min(width,height)//4))
+            col = (rng.randint(40,220), rng.randint(40,220), rng.randint(40,220), 110)
+            choice = rng.random()
+            if choice < 0.34:
+                draw.ellipse((cx-rad, cy-rad, cx+rad, cy+rad), fill=col)
+            elif choice < 0.67:
+                draw.rectangle((cx-rad, cy-rad, cx+rad, cy+rad), fill=col)
+            else:
+                pts=[]
+                for a in (0, 2*math.pi/3, 4*math.pi/3):
+                    pts.append((cx+int(rad*math.cos(a)), cy+int(rad*math.sin(a))))
+                draw.polygon(pts, fill=col)
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        return _b64.b64encode(buf.getvalue()).decode('ascii')
+    except Exception:
+        return ""

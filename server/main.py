@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 import sqlite3
 from typing import Any, Dict, List, Optional
-import os, sys, traceback
+import os, sys, traceback, base64, io, hashlib, random, math
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -207,6 +207,7 @@ def create_patient():
         )
         pid = cur.lastrowid
         row = cur.execute(SQL_PATIENT_BY_ID, (pid,)).fetchone()
+    _invalidate_rag_cache()
     return jsonify(row_to_dict(row)), 201
 
 
@@ -235,6 +236,7 @@ def update_patient(patient_id: int):
             return jsonify(NOT_FOUND), 404
         cur.execute(f"UPDATE patients SET {', '.join(fields)} WHERE id=?", (*values, patient_id))
         row = cur.execute(SQL_PATIENT_BY_ID, (patient_id,)).fetchone()
+    _invalidate_rag_cache()
     return jsonify(row_to_dict(row))
 
 
@@ -243,6 +245,7 @@ def delete_patient(patient_id: int):
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute("DELETE FROM patients WHERE id=?", (patient_id,))
+    _invalidate_rag_cache()
     return ("", 204)
 
 
@@ -263,6 +266,7 @@ def create_drug():
         )
         did = cur.lastrowid
     row = cur.execute(SQL_DRUG_BY_ID, (did,)).fetchone()
+    _invalidate_rag_cache()
     return jsonify(row_to_dict(row)), 201
 
 
@@ -291,6 +295,7 @@ def update_drug(drug_id: int):
             return jsonify(NOT_FOUND), 404
         cur.execute(f"UPDATE drugs SET {', '.join(fields)} WHERE id=?", (*values, drug_id))
         row = cur.execute(SQL_DRUG_BY_ID, (drug_id,)).fetchone()
+    _invalidate_rag_cache()
     return jsonify(row_to_dict(row))
 
 
@@ -299,6 +304,7 @@ def delete_drug(drug_id: int):
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute("DELETE FROM drugs WHERE id=?", (drug_id,))
+    _invalidate_rag_cache()
     return ("", 204)
 
 
@@ -336,6 +342,7 @@ def create_delivery():
              (data["drug_id"], -quantity, f"reserve delivery #{did}"),
         )
     row = cur.execute(SQL_DELIVERY_BY_ID, (did,)).fetchone()
+    _invalidate_rag_cache()
     return jsonify(row_to_dict(row)), 201
 
 
@@ -361,6 +368,7 @@ def delete_delivery(delivery_id: int):
                  (row["drug_id"], row["quantity"], f"delete delivery #{delivery_id}"),
             )
         cur.execute("DELETE FROM deliveries WHERE id=?", (delivery_id,))
+    _invalidate_rag_cache()
     return ("", 204)
 
 
@@ -402,6 +410,7 @@ def update_delivery_status(delivery_id: int):
             cur.execute("UPDATE deliveries SET stock_decremented=1 WHERE id=?", (delivery_id,))
         cur.execute("UPDATE deliveries SET status=? WHERE id=?", (status, delivery_id))
         row = cur.execute(SQL_DELIVERY_BY_ID, (delivery_id,)).fetchone()
+    _invalidate_rag_cache()
     return jsonify(row_to_dict(row))
 
 
@@ -423,6 +432,8 @@ def root():
             "/api/ai/summary",
             "/api/ai/chat",
             "/api/ai/answer",
+            "/api/ai/image",
+            "/api/ai/rewrite",
             "/api/ai/status",
         ],
     })
@@ -457,6 +468,7 @@ def seed():
                 (d.get("name"), d.get("dosage"), int(d.get("stock") or 0), int(d.get("reorder_level") or 0)),
             )
         conn.commit()
+    _invalidate_rag_cache()
     return jsonify({"detail": "seeded"})
 
 
@@ -487,6 +499,7 @@ def inventory_adjust():
              (drug_id, delta, reason),
          )
         row = cur.execute(SQL_DRUG_BY_ID, (drug_id,)).fetchone()
+    _invalidate_rag_cache()
     return jsonify(row_to_dict(row))
 
 
@@ -531,6 +544,7 @@ def create_drug_batch():
         if not batch:
             return jsonify({"detail": "batch insert failed"}), 500
         drug = cur.execute(SQL_DRUG_BY_ID, (drug_id,)).fetchone()
+    _invalidate_rag_cache()
     return jsonify({"batch": row_to_dict(batch), "drug": row_to_dict(drug)})
 
 
@@ -584,6 +598,7 @@ def create_drug_removal():
         if not rem:
             return jsonify({"detail":"removal insert failed"}), 500
         drug = cur.execute(SQL_DRUG_BY_ID, (drug_id,)).fetchone()
+    _invalidate_rag_cache()
     return jsonify({"removal": row_to_dict(rem), "drug": row_to_dict(drug)})
 
 
@@ -662,24 +677,40 @@ def inventory_summary():
     ])
 
 
-def compute_insights(horizon_days: int = 14) -> Dict[str, Any]:
-    """Produce heuristic insights dict (shared by route & RAG context)."""
-    since = datetime.now(timezone.utc) - timedelta(days=horizon_days)
+def compute_insights(horizon_days: int = 14, include_overdue: bool = True) -> Dict[str, Any]:
+    """Produce heuristic insights dict with multiple adherence variants.
+
+    Variants:
+      overall_percent  = delivered / (delivered + missed)
+      effective_percent= delivered / (delivered + missed + overdue_pending)
+      broad_percent    = delivered / (delivered + missed + overdue_pending + cancelled)
+    """
+    now_utc = datetime.now(timezone.utc)
+    since = now_utc - timedelta(days=horizon_days)
+    since_sql = since.strftime('%Y-%m-%d %H:%M:%S')
     with get_conn() as conn:
         cur = conn.cursor()
-        adh_row = cur.execute(
+        row = cur.execute(
             """
             SELECT 
               SUM(CASE WHEN status='delivered' THEN 1 ELSE 0 END) delivered,
-              SUM(CASE WHEN status='missed' THEN 1 ELSE 0 END) missed
+              SUM(CASE WHEN status='missed' THEN 1 ELSE 0 END) missed,
+              SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END) pending,
+              SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END) cancelled,
+              SUM(CASE WHEN status='pending' AND datetime(scheduled_for) < datetime('now') THEN 1 ELSE 0 END) overdue_pending
             FROM deliveries
-            WHERE scheduled_for >= ?
+            WHERE datetime(scheduled_for) >= datetime(?)
             """,
-            (since.isoformat(),)
+            (since_sql,)
         ).fetchone()
-        delivered = (adh_row[0] or 0)
-        missed = (adh_row[1] or 0)
+        delivered = (row[0] or 0)
+        missed = (row[1] or 0)
+        pending = (row[2] or 0)
+        cancelled = (row[3] or 0)
+        overdue_pending = (row[4] or 0) if include_overdue else 0
         adherence_rate = round(delivered / (delivered + missed) * 100, 1) if (delivered + missed) else None
+        effective_rate = round(delivered / (delivered + missed + overdue_pending) * 100, 1) if (include_overdue and (delivered + missed + overdue_pending)) else None
+        broad_rate = round(delivered / (delivered + missed + overdue_pending + cancelled) * 100, 1) if (delivered + missed + overdue_pending + cancelled) else None
         risk_rows = cur.execute(
             """
             SELECT patient_id,
@@ -714,60 +745,84 @@ def compute_insights(horizon_days: int = 14) -> Dict[str, Any]:
             ORDER BY d.name
             """
         ).fetchall()
-    inventory_issues: List[Dict[str, Any]] = []
-    recommendations: List[str] = []
-    for _id, name, stock, reorder_level, qty30 in inv_rows:
-        daily = (qty30 / 30.0) if qty30 else 0.0
-        days_supply = round(stock / daily, 1) if daily > 0 else None
-        low_threshold = (reorder_level or 0)
-        severity = None
-        if stock <= low_threshold:
-            severity = "LOW" if (days_supply or 999) >= 3 else "CRITICAL"
-        elif days_supply is not None and days_supply < 5:
-            severity = "CRITICAL"
-        if severity:
-            inventory_issues.append({
-                "drug_id": _id,
-                "name": name,
-                "stock": stock,
-                "reorder_level": reorder_level,
-                "days_supply": days_supply,
-                "severity": severity,
-            })
-            if severity == "CRITICAL":
-                target_days = 21
-                if daily > 0:
-                    needed = int(max(0, (daily * target_days) - stock))
-                else:
-                    base = reorder_level * 2 if reorder_level else 50
-                    needed = int(base)
-                if needed > 0:
-                    recommendations.append(
-                        f"Consider reordering ~{needed} units of {name} (stock {stock}, days supply {days_supply})."
-                    )
-    if (delivered + missed):
-        if adherence_rate is not None:
+        inventory_issues: List[Dict[str, Any]] = []
+        recommendations: List[str] = []
+        for _id, name, stock, reorder_level, qty30 in inv_rows:
+            daily = (qty30 / 30.0) if qty30 else 0.0
+            days_supply = round(stock / daily, 1) if daily > 0 else None
+            low_threshold = (reorder_level or 0)
+            severity = None
+            if stock <= low_threshold:
+                severity = "LOW" if (days_supply or 999) >= 3 else "CRITICAL"
+            elif days_supply is not None and days_supply < 5:
+                severity = "CRITICAL"
+            if severity:
+                inventory_issues.append({
+                    "drug_id": _id,
+                    "name": name,
+                    "stock": stock,
+                    "reorder_level": reorder_level,
+                    "days_supply": days_supply,
+                    "severity": severity,
+                })
+                if severity == "CRITICAL":
+                    target_days = 21
+                    if daily > 0:
+                        needed = int(max(0, (daily * target_days) - stock))
+                    else:
+                        base = reorder_level * 2 if reorder_level else 50
+                        needed = int(base)
+                    if needed > 0:
+                        recommendations.append(
+                            f"Consider reordering ~{needed} units of {name} (stock {stock}, days supply {days_supply})."
+                        )
+        if (delivered + missed) and adherence_rate is not None:
             if adherence_rate < 85:
-                recommendations.append(
-                    f"Overall adherence is {adherence_rate}%. Investigate missed doses."
-                )
+                recommendations.append(f"Overall adherence is {adherence_rate}%. Investigate missed doses.")
             elif adherence_rate < 95:
-                recommendations.append(
-                    f"Adherence at {adherence_rate}% is moderate; aim for >=95%."
-                )
-    if not recommendations and not inventory_issues and not risk_patients:
-        recommendations.append("System stable: no immediate risks detected.")
-    return {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+                recommendations.append(f"Adherence at {adherence_rate}% is moderate; aim for >=95%.")
+        if not recommendations and not inventory_issues and not risk_patients:
+            recommendations.append("System stable: no immediate risks detected.")
+    insight = {
+        "generated_at": now_utc.isoformat(),
         "horizon_days": horizon_days,
         "adherence": {
             "overall_percent": adherence_rate,
+            "effective_percent": effective_rate,
+            "broad_percent": broad_rate,
+            "delivered": delivered,
+            "missed": missed,
+            "pending": pending,
+            "cancelled": cancelled,
+            "overdue_pending": overdue_pending,
             "risk_patients": risk_patients,
         },
         "inventory": {"issues": inventory_issues},
         "recommendations": recommendations,
         "disclaimer": "Heuristic preview – not medical advice.",
     }
+    return insight
+
+@app.get('/api/insights/debug')
+def insights_debug():
+    data = compute_insights()
+    adh = data.get('adherence', {})
+    return jsonify({
+        "counts": {
+            "delivered": adh.get('delivered'),
+            "missed": adh.get('missed'),
+            "pending": adh.get('pending'),
+            "cancelled": adh.get('cancelled'),
+            "overdue_pending": adh.get('overdue_pending'),
+        },
+        "rates": {
+            "overall_percent": adh.get('overall_percent'),
+            "effective_percent": adh.get('effective_percent'),
+            "broad_percent": adh.get('broad_percent'),
+        },
+        "horizon_days": data.get('horizon_days'),
+        "generated_at": data.get('generated_at')
+    })
 
 
 @app.get("/api/insights")
@@ -781,8 +836,9 @@ def _ai_enabled():
 
 @app.get("/api/ai/summary")
 def ai_summary():
-    # Gather stats + insights for summary
+    # Fresh stats + insights each call (avoid stale adherence values) and no caching.
     try:
+        now_iso = datetime.now(timezone.utc).isoformat()
         with get_conn() as conn:
             cur = conn.cursor()
             patient_count = cur.execute(SQL_COUNT_PATIENTS).fetchone()[0]
@@ -790,18 +846,136 @@ def ai_summary():
             delivery_count = cur.execute(SQL_COUNT_DELIVERIES).fetchone()[0]
             low_stock = cur.execute("SELECT COUNT(*) FROM drugs WHERE stock <= reorder_level").fetchone()[0]
         stats = {"patients": patient_count, "drugs": drug_count, "deliveries": delivery_count, "low_stock_drugs": low_stock}
-        # Reuse internal insights logic via request dispatch (cheap call)
-        insights_data = insights().json if hasattr(insights(), 'json') else None  # fallback if direct
-        if not insights_data:
-            # If direct call caused duplicate execution, just skip
-            insights_data = {}
+        insights_data = compute_insights()  # single authoritative computation
         if _ai_service and hasattr(_ai_service, 'summarize'):
-            summary = _ai_service.summarize({"stats": stats, "insights": insights_data})
+            # Pass timestamp to allow downstream model to bypass its own cache if any
+            summary = _ai_service.summarize({"stats": stats, "insights": insights_data, "ts": now_iso})
         else:
-            summary = "AI module unavailable. Provide GOOGLE_GENAI_API_KEY and restart."
-        return jsonify({"summary": summary, "ai": _ai_enabled()})
+            adh_obj = insights_data.get('adherence', {})
+            adh = adh_obj.get('broad_percent') or adh_obj.get('effective_percent') or adh_obj.get('overall_percent')
+            horizon = insights_data.get('horizon_days')
+            inv_issues = len(insights_data.get('inventory', {}).get('issues', []))
+            recs = len(insights_data.get('recommendations', []))
+            parts = [f"Patients {patient_count}", f"Drugs {drug_count}", f"Deliveries {delivery_count}"]
+            if adh is not None:
+                parts.append(f"Adherence {adh}% (last {horizon}d)")
+                counts = f"D{adh_obj.get('delivered')} M{adh_obj.get('missed')} P{adh_obj.get('pending')} C{adh_obj.get('cancelled')} O{adh_obj.get('overdue_pending')}"
+                parts.append(counts)
+            if low_stock:
+                parts.append(f"Low stock drugs {low_stock}")
+            if inv_issues:
+                parts.append(f"Inventory issues {inv_issues}")
+            if recs:
+                parts.append(f"Recs {recs}")
+            summary = ' | '.join(parts)
+        resp = jsonify({
+            "summary": summary,
+            "ai": _ai_enabled(),
+            "stats": stats,
+            "adherence": insights_data.get('adherence'),
+        })
+        resp.headers['Cache-Control'] = 'no-store, max-age=0'
+        resp.headers['X-Generated-At'] = now_iso
+        return resp
     except Exception as e:
         return jsonify({"summary": f"Summary unavailable: {e}", "ai": False}), 500
+
+
+@app.get('/api/ai/explain/adherence')
+def ai_explain_adherence():
+    """Return an AI (or heuristic) explanation of adherence metrics and drivers."""
+    data = compute_insights()
+    adh = data.get('adherence', {})
+    counts = {
+        'delivered': adh.get('delivered'),
+        'missed': adh.get('missed'),
+        'pending': adh.get('pending'),
+        'cancelled': adh.get('cancelled'),
+        'overdue_pending': adh.get('overdue_pending'),
+    }
+    prompt_payload = {"type": "adherence_explain", "counts": counts, "rates": {
+        'overall_percent': adh.get('overall_percent'),
+        'effective_percent': adh.get('effective_percent'),
+        'broad_percent': adh.get('broad_percent'),
+    }, "horizon_days": data.get('horizon_days'), "recommendations": data.get('recommendations', [])}
+    explanation = None
+    if _ai_service and hasattr(_ai_service, 'summarize'):
+        try:
+            explanation = _ai_service.summarize({"task": "explain_adherence", **prompt_payload})
+        except Exception as e:
+            explanation = f"AI explanation failed: {e}"
+    if not explanation:
+        denom_note = "Delivered + Missed" if counts['overdue_pending'] == 0 else "Delivered + Missed (+Overdue/Pending depending on view)"
+        explanation = (
+            f"Overall adherence {adh.get('overall_percent')}%. Effective (incl overdue) {adh.get('effective_percent')}%. "
+            f"Broad (incl cancelled) {adh.get('broad_percent')}%. Delivered {counts['delivered']}, Missed {counts['missed']}, "
+            f"Pending {counts['pending']}, Cancelled {counts['cancelled']}, Overdue {counts['overdue_pending']}. "
+            f"Primary denominator: {denom_note}."
+        )
+    return jsonify({"explanation": explanation, "ai": _ai_enabled(), "counts": counts, "rates": prompt_payload['rates'], "horizon_days": prompt_payload['horizon_days']})
+
+
+@app.get('/api/ai/patient_summary')
+def ai_patient_summary():
+    """Return AI (or heuristic) summary for a single patient by id."""
+    try:
+        pid = int(request.args.get('patient_id', '0'))
+    except ValueError:
+        return jsonify({"detail": "patient_id invalid"}), 400
+    with get_conn() as conn:
+        cur = conn.cursor()
+        prow = cur.execute("SELECT id,name,age,condition FROM patients WHERE id=?", (pid,)).fetchone()
+        if not prow:
+            return jsonify({"detail": "patient not found"}), 404
+        # Last 30 days deliveries
+        deliveries = cur.execute(
+            """
+            SELECT id, scheduled_for, status, quantity, drug_id
+            FROM deliveries
+            WHERE patient_id=? AND scheduled_for >= datetime('now','-30 day')
+            ORDER BY scheduled_for DESC
+            LIMIT 200
+            """,
+            (pid,)
+        ).fetchall()
+        # Counts
+        agg = cur.execute(
+            """
+            SELECT 
+              SUM(CASE WHEN status='delivered' THEN 1 ELSE 0 END) delivered,
+              SUM(CASE WHEN status='missed' THEN 1 ELSE 0 END) missed,
+              SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END) pending,
+              SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END) cancelled
+            FROM deliveries WHERE patient_id=? AND scheduled_for >= datetime('now','-30 day')
+            """,
+            (pid,)
+        ).fetchone()
+    delivered = (agg[0] or 0)
+    missed = (agg[1] or 0)
+    pending = (agg[2] or 0)
+    cancelled = (agg[3] or 0)
+    pat = {"id": prow[0], "name": prow[1], "age": prow[2], "condition": prow[3]}
+    adherence_30 = round(delivered / (delivered + missed) * 100, 1) if (delivered + missed) else None
+    base_payload = {
+        "patient": pat,
+        "counts_30d": {"delivered": delivered, "missed": missed, "pending": pending, "cancelled": cancelled},
+        "adherence_percent_30d": adherence_30,
+        "recent_deliveries": [
+            {"id": d[0], "scheduled_for": d[1], "status": d[2], "quantity": d[3], "drug_id": d[4]} for d in deliveries
+        ],
+    }
+    summary_text = None
+    if _ai_service and hasattr(_ai_service, 'summarize'):
+        try:
+            summary_text = _ai_service.summarize({"task": "patient_summary", **base_payload})
+        except Exception as e:
+            summary_text = f"AI summary failed: {e}"
+    if not summary_text:
+        summary_text = (
+            f"Patient {pat['name']} ({pat['age']}y, {pat['condition'] or 'condition n/a'}). 30d adherence {adherence_30}%. "
+            f"Delivered {delivered}, Missed {missed}, Pending {pending}, Cancelled {cancelled}."
+        )
+    return jsonify({"summary": summary_text, **base_payload, "ai": _ai_enabled()})
 
 
 @app.post("/api/ai/chat")
@@ -831,6 +1005,160 @@ def ai_chat():
         return jsonify({"reply": err, "history": sanitized, "ai": False}), 500
 
 
+@app.post("/api/ai/image")
+def ai_image():
+    """Image generation endpoint (placeholder / extensible).
+
+    Accepts JSON body: {prompt:str, width?:int, height?:int, style?:str}
+    Styles: 'cool' (blue/teal gradient), 'warm' (rose/amber), 'mono' (slate), default 'cool'.
+    Width/height clamped to [64,1024]. Returns base64 SVG data URI.
+    If future real image generation is added in ai_service (e.g. generate_image()),
+    we attempt to delegate and fall back to SVG placeholder on error or absence.
+    """
+    body = request.get_json(force=True) or {}
+    prompt = (body.get('prompt') or '').strip()
+    if not prompt:
+        return jsonify({"detail": "prompt required"}), 400
+    try:
+        w = int(body.get('width') or 512)
+        h = int(body.get('height') or 512)
+    except Exception:
+        return jsonify({"detail": "width/height invalid"}), 400
+    w = max(64, min(1024, w))
+    h = max(64, min(1024, h))
+    style = (body.get('style') or 'cool').lower()
+    gradients = {
+        'cool': [('#1e3a8a', '#0f766e')],
+        'warm': [('#be123c', '#f59e0b')],
+        'mono': [('#334155', '#1e293b')],
+    }
+    stops = gradients.get(style, gradients['cool'])[0]
+    truncated = prompt[:100]
+    esc = truncated.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')
+    # Optional delegate to real AI image service
+    ai_flag = False
+    if _ai_service and hasattr(_ai_service, 'generate_image'):
+        try:
+            img_b64 = _ai_service.generate_image(prompt, w, h, style)  # expected to return base64 PNG (without header) or data URI
+            if img_b64:
+                # If it already looks like data URI just return
+                if img_b64.startswith('data:'):
+                    return jsonify({"image": img_b64, "prompt": prompt, "ai": _ai_enabled(), "style": style, "width": w, "height": h})
+                data_uri = 'data:image/png;base64,' + img_b64
+                return jsonify({"image": data_uri, "prompt": prompt, "ai": _ai_enabled(), "style": style, "width": w, "height": h})
+            ai_flag = _ai_enabled()
+        except Exception as e:
+            # Fall through to SVG placeholder
+            print('[ai_image] generate_image failed, fallback to SVG:', e)
+    # Try procedural PNG generation (deterministic for same prompt/style/size) using Pillow
+    data_uri: str
+    try:
+        from PIL import Image, ImageDraw, ImageFilter  # type: ignore
+        seed_src = f"{prompt}|{w}|{h}|{style}".encode('utf-8')
+        seed = int(hashlib.sha256(seed_src).hexdigest(), 16) % (2**32-1)
+        rng = random.Random(seed)
+        # Background gradient
+        img = Image.new('RGBA', (w, h), (0,0,0,0))
+        # Create gradient by vertical interpolation between two style colors
+        style_pal = {
+            'cool': ((30,58,138),(15,118,110)),
+            'warm': ((190,18,60),(245,158,11)),
+            'mono': ((51,65,85),(30,41,59)),
+        }
+        c1, c2 = style_pal.get(style, style_pal['cool'])
+        for y in range(h):
+            t = y/(h-1) if h>1 else 0
+            r = int(c1[0]*(1-t)+c2[0]*t)
+            g = int(c1[1]*(1-t)+c2[1]*t)
+            b = int(c1[2]*(1-t)+c2[2]*t)
+            for x in range(w):
+                img.putpixel((x,y),(r,g,b,255))
+        draw = ImageDraw.Draw(img, 'RGBA')
+        # Derive a small palette from hash
+        def rand_color():
+            return (rng.randint(40,220), rng.randint(40,220), rng.randint(40,220), rng.randint(120,200))
+        # Draw hashed geometric shapes
+        shape_count = 12 + (seed % 9)
+        for i in range(shape_count):
+            shape_type = rng.choice(['circle','rect','poly'])
+            cx = rng.randint(0, w)
+            cy = rng.randint(0, h)
+            max_r = int(min(w,h)/3)
+            r = rng.randint(int(max_r*0.15), max_r)
+            fill = rand_color()
+            if shape_type == 'circle':
+                draw.ellipse((cx-r, cy-r, cx+r, cy+r), fill=fill)
+            elif shape_type == 'rect':
+                draw.rectangle((cx-r, cy-r, cx+r, cy+r), fill=fill)
+            else:  # poly (triangle)
+                pts = []
+                for a in (0, 2*math.pi/3, 4*math.pi/3):
+                    pts.append((cx + int(r*math.cos(a+rng.random()*0.6)), cy + int(r*math.sin(a+rng.random()*0.6))))
+                draw.polygon(pts, fill=fill)
+        # Light blur for blending
+        img = img.filter(ImageFilter.GaussianBlur(radius=max(1,int(min(w,h)/180))))
+        # Overlay subtle hash-based signature bars
+        bars = 6
+        for i in range(bars):
+            bar_w = max(2, w//(bars*2))
+            x0 = int((i+0.5)*w/bars) - bar_w//2
+            alpha = 50 + (seed >> (i*3) & 0x3F)
+            draw.rectangle((x0, 0, x0+bar_w, h), fill=(255,255,255, alpha//6))
+        # Small corner label (first two words of prompt)
+        label = ' '.join(prompt.split()[:2])[:24]
+        if label:
+            # Semi-transparent sash
+            draw.rectangle((0,h-18, w, h), fill=(0,0,0,90))
+            # Basic text (Pillow without font path -> default bitmap font)
+            draw.text((6,h-16), label, fill=(255,255,255,200))
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        b64 = base64.b64encode(buf.getvalue()).decode('ascii')
+        data_uri = 'data:image/png;base64,' + b64
+    except Exception as e:  # fallback to SVG with prompt text
+        svg = (
+            f"<svg xmlns='http://www.w3.org/2000/svg' width='{w}' height='{h}'>"\
+            "<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>"\
+            f"<stop offset='0%' stop-color='{stops[0]}'/><stop offset='100%' stop-color='{stops[1]}'/></linearGradient></defs>"\
+            f"<rect width='{w}' height='{h}' rx='12' ry='12' fill='url(#g)'/>"\
+            f"<text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='Arial,Helvetica,sans-serif' font-size='{max(10, min(28, w//18))}' fill='white'>{esc}</text>"\
+            "</svg>"
+        )
+        data_uri = 'data:image/svg+xml;base64,' + base64.b64encode(svg.encode('utf-8')).decode('ascii')
+    return jsonify({"image": data_uri, "prompt": prompt, "ai": ai_flag, "style": style, "width": w, "height": h})
+
+
+@app.post('/api/ai/rewrite')
+def ai_rewrite():
+    """Rewrite / transform a given text (simplify or bulletize).
+
+    Body: {text:str, mode?:'simplify'|'bulletize'}
+    Returns transformed text (AI when available, heuristic fallback otherwise).
+    """
+    data = request.get_json(force=True) or {}
+    text = (data.get('text') or '').strip()
+    if not text:
+        return jsonify({"detail": "text required"}), 400
+    mode = (data.get('mode') or 'simplify').lower()
+    if mode not in {'simplify','bulletize'}:
+        return jsonify({"detail": "invalid mode"}), 400
+    rewritten = None
+    if _ai_service and hasattr(_ai_service, 'summarize'):
+        try:
+            task_spec = {"task": "rewrite", "mode": mode, "text": text}
+            rewritten = _ai_service.summarize(task_spec)
+        except Exception as e:
+            rewritten = None
+            print('[ai_rewrite] AI rewrite failed, fallback:', e)
+    if not rewritten:
+        if mode == 'bulletize':
+            parts = [p.strip() for p in text.split('.') if p.strip()][:8]
+            rewritten = '\n'.join(f"- {p}" for p in parts)
+        else:  # simplify
+            rewritten = (text[:400] + ('…' if len(text) > 400 else ''))
+    return jsonify({"rewritten": rewritten, "mode": mode, "ai": _ai_enabled() and bool(rewritten)})
+
+
 @app.get("/api/ai/status")
 def ai_status():
     enabled = _ai_enabled()
@@ -851,11 +1179,18 @@ def ai_status():
             last_err = getattr(_ai_service, 'LAST_AI_ERROR', None)
     except Exception:
         last_err = None
+    # Detect Pillow for image generation support
+    try:
+        import PIL  # type: ignore
+        image_support = True
+    except Exception:
+        image_support = False
     return jsonify({
         "ai": enabled,
         "model": model,
         "reason": reason,
         "last_ai_error": last_err,
+        "image_support": image_support,
     })
 
 
@@ -869,6 +1204,12 @@ def _tokenize(text: str) -> List[str]:
 
 
 _RAG_CACHE: Dict[str, Any] = {"ts": 0, "insights": None}
+
+def _invalidate_rag_cache():
+    """Invalidate cached insights used for RAG / AI context so next request recomputes.
+    Called after any mutation that can affect adherence, inventory, or counts."""
+    _RAG_CACHE['ts'] = 0
+    _RAG_CACHE['insights'] = None
 
 def _build_rag_context(question: str) -> Dict[str, Any]:
     terms = set(_tokenize(question))
